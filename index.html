@@ -1,4 +1,5 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
 <title>Case Opening Study</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -149,9 +150,12 @@ const CONFIG = {
   SAME_SEQUENCE_FOR_ALL: true,
   SEED: 20260944,             // chosen so early outcomes are typical: no Legendary in the first 10 spins, ~96% return over 60
 
-  // Skins group. "sell" = won skins go to an inventory and the participant can sell them for coins.
-  // "auto" = a skin's value is added to the balance straight away (balances then match the currency group).
-  SKINS_MODE: "sell",
+  // Groups: "skins" (avatars with rarity info), "plain" (same avatars, no rarity info, one background colour),
+  // "currency" (coin prizes). Participants are split evenly across all three.
+  // Skin groups. "auto" = a skin's value is added to the balance straight away (balances match the currency group).
+  // "sell" = won skins go to an inventory and the participant must sell them for coins.
+  SKINS_MODE: "auto",
+  PLAIN_COLOR: "#566078",     // the single background/border colour used for every item in the plain group
 
   // Rarity panel ("X% of players got this"). Show it to the currency group too?
   // true keeps the groups matched apart from the reward type; false shows it to the skins group only.
@@ -237,10 +241,10 @@ const coinSVG = cls => `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="tru
 
 function itemFor(idx){const it=ITEMS[idx];return {...it, idx, tierObj:tierById(it.tier)}}
 function cellHTML(it){
-  const inner = S.cond==="skins"
+  const inner = skinCond()
     ? `${avatarSVG(it)}<span class="nm">${esc(it.name)}</span>`
     : `${coinSVG("coins")}<span class="amt">+${fmt(it.value)}</span>`;
-  return `<div class="cell" style="--t:${it.tierObj.color}">${inner}</div>`;
+  return `<div class="cell" style="--t:${colorOf(it)}">${inner}</div>`;
 }
 
 /* ---------- pre-generated outcomes (identical across groups) ---------- */
@@ -263,7 +267,10 @@ const S = {
   hiddenMs:0, hiddenAt:null, firstWithdrawSpin:null, latencies:[], drops:[],
   events:[], startedAt:null, endReason:null, code:makeCode(), pendingEnd:null,
 };
-const sellMode = () => S.cond==="skins" && CONFIG.SKINS_MODE==="sell";
+const skinCond = () => S.cond!=="currency";
+const rarityShown = () => S.cond==="skins" || (S.cond==="currency" && CONFIG.RARITY_PANEL_FOR_CURRENCY);
+const colorOf = it => S.cond==="plain" ? CONFIG.PLAIN_COLOR : it.tierObj.color;
+const sellMode = () => skinCond() && CONFIG.SKINS_MODE==="sell";
 const now = () => Math.round(performance.now() - S.t0);
 const invValue = () => S.inventory.reduce((s,x)=>s+ITEMS[x.idx].value,0);
 function log(type, extra={}){ S.events.push({pid:S.pid, condition:S.cond, event:type, t_ms:now(), clock:new Date().toISOString(), spin_n:S.spins, balance:S.balance, inventory_n:S.inventory.length, inventory_value:invValue(), ...extra}); }
@@ -279,7 +286,7 @@ function screenConsent(){
   app.className = "wrap";
   app.innerHTML = `
     ${DEMO ? `<div class="demo-bar"><strong>Demo mode.</strong> Nothing is sent anywhere; data appears on the last screen.
-      <label>Group <select id="demoCond"><option value="random">Random</option><option value="skins">Skins</option><option value="currency">Currency</option></select></label></div>` : ""}
+      <label>Group <select id="demoCond"><option value="random">Random</option><option value="skins">Skins (with rarity)</option><option value="plain">Plain skins (no rarity)</option><option value="currency">Currency</option></select></label></div>` : ""}
     <div class="card">
       <span class="eyebrow">Participant information</span>
       <h1>${esc(CONFIG.STUDY_TITLE)}</h1>
@@ -306,22 +313,23 @@ function screenConsent(){
 async function assignCondition(demoChoice){
   const fromUrl = P.get("cond");
   if(demoChoice && demoChoice!=="random") return demoChoice;
-  if(fromUrl==="skins" || fromUrl==="currency") return fromUrl;
+  if(["skins","plain","currency"].includes(fromUrl)) return fromUrl;
   if(!DEMO){
     try{
       const r = await fetch("https://pipe.jspsych.org/api/condition/", {method:"POST", headers:{"Content-Type":"application/json", Accept:"*/*"}, body:JSON.stringify({experimentID:CONFIG.DATAPIPE_ID})});
       const j = await r.json();
-      if(typeof j.condition === "number") return j.condition===0 ? "skins" : "currency";
+      if(typeof j.condition === "number") return ["skins","plain","currency"][j.condition % 3];
     }catch(e){}
   }
-  return Math.random()<.5 ? "skins" : "currency";
+  return ["skins","plain","currency"][Math.floor(Math.random()*3)];
 }
 
 function screenInstructions(){
-  const skins = S.cond==="skins";
-  const rule = !skins ? "Each case contains a coin prize that is added to your balance. Rarer prizes are worth more."
-    : sellMode() ? "Each case contains an avatar that goes into your inventory. Rarer avatars are worth more, and you can sell any avatar for coins."
-    : "Each case contains an avatar. Rarer avatars are worth more, and their value is added to your balance.";
+  const skins = skinCond(), plain = S.cond==="plain";
+  const rarer = plain ? "" : " Rarer ones are worth more.";
+  const rule = !skins ? "Each case contains a coin prize that is added to your balance." + rarer
+    : sellMode() ? "Each case contains an avatar that goes into your inventory. You can sell any avatar for coins." + rarer
+    : "Each case contains an avatar. Its value in coins is added to your balance." + rarer;
   app.innerHTML = `
     <div class="card">
       <span class="eyebrow">How it works</span>
@@ -332,7 +340,7 @@ function screenInstructions(){
         <li>If you run out of coins, you can withdraw more and keep playing.</li>
         <li>Play as long as you want. Press <em>Stop playing</em> whenever you want to finish.</li>
       </ul>
-      <div class="row">${TIERS.map(t=>`<span class="tier" style="--t:${t.color}">${t.label}</span>`).join('<span class="placeholder">·</span>')}</div>
+      ${plain ? "" : `<div class="row">${TIERS.map(t=>`<span class="tier" style="--t:${t.color}">${t.label}</span>`).join('<span class="placeholder">·</span>')}</div>`}
       <div class="row"><button class="btn-go" id="start">Start the game</button></div>
     </div>`;
   $("#start").onclick = startGame;
@@ -341,7 +349,7 @@ function screenInstructions(){
 function startGame(){
   S.t0 = performance.now(); S.startedAt = new Date().toISOString();
   log("game_start", {seed:S.seed});
-  const panel = S.cond==="skins" || CONFIG.RARITY_PANEL_FOR_CURRENCY;
+  const panel = rarityShown();
   app.className = panel ? "wrap wide" : "wrap";
   app.innerHTML = `
     ${DEMO ? `<div class="demo-bar"><strong>Demo mode</strong> · group: ${S.cond}</div>` : ""}
@@ -432,16 +440,16 @@ function renderStrip(cells, animate){
 function renderReveal(it){
   const r = $("#reveal");
   if(!it){ r.innerHTML = `<p class="placeholder">Open a case to see what you get.</p>`; return; }
-  const skins = S.cond==="skins";
-  const c = it.tierObj.color;
+  const skins = skinCond(), plain = S.cond==="plain";
+  const c = colorOf(it);
   const sub = !skins ? "Added to your balance"
     : sellMode() ? `Worth <span class="num">${fmt(it.value)}</span> coins · added to your inventory`
     : `Worth <span class="num">${fmt(it.value)}</span> coins · added to your balance`;
-  const exclusive = skins || CONFIG.RARITY_PANEL_FOR_CURRENCY;
+  const exclusive = rarityShown();
   r.innerHTML = `<div class="reveal" style="--t:${c}">
     <div class="big">${skins ? avatarSVG(it) : coinSVG("coins")}</div>
     <div class="stack" style="gap:6px">
-      <span class="tier">${it.tierObj.label}</span>
+      ${plain ? "" : `<span class="tier">${it.tierObj.label}</span>`}
       <h2>${skins ? esc(it.name) : `+${fmt(it.value)} coins`}</h2>
       ${exclusive ? `<span class="excl">Only <b>${pctText(skins ? it.p : tierP(it.tier))}</b> of players got this</span>` : ""}
       <span class="sub">${sub}</span>
@@ -456,9 +464,9 @@ function renderInventory(){
     <div class="inv-head"><div class="stack" style="gap:4px"><span class="eyebrow">Your inventory</span>
       <h3>${S.inventory.length} avatar${S.inventory.length===1?"":"s"} · worth <span class="num">${fmt(invValue())}</span> coins</h3></div></div>
     ${items.length ? `<div class="inv">${items.map(x => { const it=itemFor(x.idx); return `
-      <div class="inv-item" style="--t:${it.tierObj.color}">
+      <div class="inv-item" style="--t:${colorOf(it)}">
         ${avatarSVG(it)}<span class="nm">${esc(it.name)}</span>
-        <span class="tier" style="font-size:.64rem">${it.tierObj.label} · ${pctText(it.p)}</span>
+        ${S.cond==="plain" ? "" : `<span class="tier" style="font-size:.64rem">${it.tierObj.label} · ${pctText(it.p)}</span>`}
         <button class="btn-sell" data-uid="${x.uid}" ${S.spinning?"disabled":""}>Sell · <span class="num">${fmt(it.value)}</span></button>
       </div>`}).join("")}</div>`
     : `<p class="placeholder">Avatars you unbox appear here. You can keep them or sell them for coins.</p>`}`;
@@ -468,7 +476,7 @@ function renderInventory(){
 function renderDrops(){
   const d=$("#drops");
   d.innerHTML = S.drops.slice(-14).reverse().map(it =>
-    `<div class="drop" style="--t:${it.tierObj.color}" title="${esc(S.cond==="skins"?it.name:it.tierObj.label)}">${S.cond==="skins" ? avatarSVG(it) : "+"+fmt(it.value)}</div>`).join("");
+    `<div class="drop" style="--t:${colorOf(it)}" title="${esc(skinCond()?it.name:it.tierObj.label)}">${skinCond() ? avatarSVG(it) : "+"+fmt(it.value)}</div>`).join("");
 }
 
 function spin(){
@@ -501,7 +509,7 @@ function finishSpin(plan){
   else { credited = it.value; S.balance += credited; S.won += credited; }
   S.obtained.add(it.idx);
   S.drops.push(it);
-  log("spin_result", {tier:it.tier, item:S.cond==="skins"?it.name:"coins", item_p:it.p, value:it.value, credited});
+  log("spin_result", {tier:it.tier, item:skinCond()?it.name:"coins", item_p:it.p, value:it.value, credited});
   S.spinning = false; S.lastReveal = performance.now();
   renderBalance(); renderReveal(it); renderDrops(); renderInventory(); renderOdds(); renderControls(); $("#stop").disabled = false;
   if(S.pendingEnd) return endGame(S.pendingEnd);
@@ -563,7 +571,11 @@ function toCSV(rows){
 }
 async function saveFile(filename, data){
   const r = await fetch("https://pipe.jspsych.org/api/data/", {method:"POST", headers:{"Content-Type":"application/json", Accept:"*/*"}, body:JSON.stringify({experimentID:CONFIG.DATAPIPE_ID, filename, data})});
-  if(!r.ok) throw new Error("HTTP " + r.status);
+  if(!r.ok){
+    let detail = "";
+    try{ detail = await r.text(); }catch(e){}
+    throw new Error("HTTP " + r.status + (detail ? " · " + detail.slice(0,300) : ""));
+  }
 }
 
 async function endGame(reason){
@@ -587,8 +599,8 @@ async function endGame(reason){
     <div class="card">
       <span class="eyebrow">About this study</span>
       <h2>What the game was really testing</h2>
-      <p>You were in one of two groups. One group won collectible avatars, the other won coin prizes. The chances of each outcome were exactly the same in both groups. We want to know whether the kind of reward changes how long people keep playing and how often they add more coins.</p>
-      <p>The "% of players got this" figures were not counts of real players. They were the fixed chances of each outcome, set by the researcher to make rare items feel exclusive.</p>
+      <p>You were in one of three groups. Two groups won collectible avatars (one saw how rare each avatar was, the other did not), and one group won coin prizes. The chances of each outcome were exactly the same in all groups. We want to know whether the kind of reward changes how long people keep playing and how often they add more coins.</p>
+      ${rarityShown() ? `<p>The "% of players got this" figures were not counts of real players. They were the fixed chances of each outcome, set by the researcher to make rare items feel exclusive.</p>` : ""}
       <p>The game was set so that, on average, each case returned less than it cost (about 96 coins back per 100 spent), like real gambling products. Over time the player always loses. Nothing you won or lost was real.</p>
       <p>${esc(CONFIG.HELP_TEXT)}</p>
       <p>Questions or wish to withdraw your data: <span class="num">${esc(CONFIG.CONTACT)}</span>, quoting your completion code.</p>
@@ -597,15 +609,17 @@ async function endGame(reason){
 
   if(DEMO){ wireCopy(eventsCSV, summaryCSV); return; }
   const status = $("#status");
-  let ok = false;
+  let ok = false, lastErr = "";
+  let summarySaved = false;
   for(let attempt=0; attempt<3 && !ok; attempt++){
     try{
-      await saveFile(`${S.pid}_summary.csv`, summaryCSV);
+      if(!summarySaved){ await saveFile(`${S.pid}_summary.csv`, summaryCSV); summarySaved = true; }
       await saveFile(`${S.pid}_events.csv`, eventsCSV);
       ok = true;
-    }catch(e){ await new Promise(r=>setTimeout(r, 1500)); }
+    }catch(e){ lastErr = e && e.message ? e.message : String(e); console.error("DataPipe save failed:", lastErr); await new Promise(r=>setTimeout(r, 1500)); }
   }
   status.textContent = ok ? "Your responses are saved. You can close this page." : "We could not save your responses. Please send the completion code above to the researcher.";
+  if(!ok) status.insertAdjacentHTML("afterend", `<p class="placeholder" style="font-size:.8rem">Error details for the researcher: <span class="num">${esc(lastErr || "no response (network blocked or offline)")}</span></p>`);
   if(ok && CONFIG.REDIRECT_URL){
     const u = CONFIG.REDIRECT_URL + (CONFIG.REDIRECT_URL.includes("?")?"&":"?") + `pid=${encodeURIComponent(S.pid)}&cond=${S.cond}&code=${S.code}`;
     $("#next").innerHTML = `<a href="${esc(u)}"><button class="btn-go">Continue to the questionnaire</button></a>`;
