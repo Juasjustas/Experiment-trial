@@ -44,6 +44,11 @@
   label.check{display:flex; gap:10px; align-items:flex-start; max-width:62ch}
   label.check input{margin-top:4px; width:18px; height:18px; accent-color:var(--go)}
   .demo-bar{font-size:.82rem; color:var(--muted); border:1px dashed var(--line); border-radius:8px; padding:10px 12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .picker{display:flex; flex-direction:column; gap:10px}
+  .picker-opts{display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:8px}
+  .picker-opts button{display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; border:1px solid var(--line); background:var(--panel-2); padding:12px 14px}
+  .picker-opts button small{font-weight:400; color:var(--muted); font-size:.8rem}
+  .picker-opts button[aria-pressed="true"]{border-color:var(--coin); background:color-mix(in srgb, var(--coin) 12%, var(--panel-2))}
   .demo-bar select{background:var(--panel-2); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font:inherit}
 
   /* game */
@@ -161,6 +166,10 @@ const CONFIG = {
   // true keeps the groups matched apart from the reward type; false shows it to the skins group only.
   RARITY_PANEL_FOR_CURRENCY: true,
 
+  // Show a "choose the game type" picker on the first screen (for testing and demos).
+  // SET TO false FOR THE REAL STUDY so participants are assigned to groups automatically.
+  SHOW_GROUP_PICKER: true,
+
   // Data saving. Leave DATAPIPE_ID empty to run in demo mode (data shown on screen, nothing sent).
   // With an ID from pipe.jspsych.org, data is saved to your OSF project and groups are balanced.
   DATAPIPE_ID: "tG82musgz2sa",
@@ -205,6 +214,7 @@ const ITEMS = [
 /* ===================================================================== */
 
 const DEMO = !CONFIG.DATAPIPE_ID;
+const PICKER = DEMO || CONFIG.SHOW_GROUP_PICKER;
 const STRIP_LEN = 60, WIN_INDEX = 48, SPIN_MS = 4800;
 const $ = (s, el=document) => el.querySelector(s);
 const app = $("#app");
@@ -285,8 +295,13 @@ document.addEventListener("visibilitychange", () => {
 function screenConsent(){
   app.className = "wrap";
   app.innerHTML = `
-    ${DEMO ? `<div class="demo-bar"><strong>Demo mode.</strong> Nothing is sent anywhere; data appears on the last screen.
-      <label>Group <select id="demoCond"><option value="random">Random</option><option value="skins">Skins (with rarity)</option><option value="plain">Plain skins (no rarity)</option><option value="currency">Currency</option></select></label></div>` : ""}
+    ${DEMO ? `<div class="demo-bar"><strong>Demo mode.</strong> Nothing is sent anywhere; data appears on the last screen.</div>` : ""}
+    ${PICKER ? `<div class="card picker">
+      <span class="eyebrow">Testing · choose the game type</span>
+      <div class="picker-opts" role="group" aria-label="Game type">
+        ${[["random","Random","Assigned automatically"],["skins","Skins","Avatars with rarity"],["plain","Plain skins","Avatars, no rarity"],["currency","Coins","Coin prizes"]].map(([v,l,d]) =>
+          `<button type="button" data-cond="${v}" aria-pressed="${v==="random"}">${l}<small>${d}</small></button>`).join("")}
+      </div></div>` : ""}
     <div class="card">
       <span class="eyebrow">Participant information</span>
       <h1>${esc(CONFIG.STUDY_TITLE)}</h1>
@@ -302,10 +317,16 @@ function screenConsent(){
       <div class="row"><button class="btn-go" id="go" disabled>Continue</button></div>
     </div>`;
   const agree=$("#agree"), go=$("#go");
+  let picked = "random";
+  app.querySelectorAll("[data-cond]").forEach(b => b.onclick = () => {
+    picked = b.dataset.cond;
+    app.querySelectorAll("[data-cond]").forEach(x => x.setAttribute("aria-pressed", String(x===b)));
+  });
   agree.onchange = () => go.disabled = !agree.checked;
   go.onclick = async () => {
     go.disabled = true; go.textContent = "Loading…";
-    S.cond = await assignCondition(DEMO ? $("#demoCond").value : null);
+    S.condSource = PICKER && picked!=="random" ? "picker" : "assigned";
+    S.cond = await assignCondition(PICKER ? picked : null);
     screenInstructions();
   };
 }
@@ -551,7 +572,7 @@ function summary(){
   const lat = S.latencies.slice(1);
   const mean = lat.length ? Math.round(lat.reduce((a,b)=>a+b,0)/lat.length) : "";
   return {
-    pid:S.pid, condition:S.cond, skins_mode:CONFIG.SKINS_MODE, rarity_panel_currency:CONFIG.RARITY_PANEL_FOR_CURRENCY,
+    pid:S.pid, condition:S.cond, condition_source:S.condSource, skins_mode:CONFIG.SKINS_MODE, rarity_panel_currency:CONFIG.RARITY_PANEL_FOR_CURRENCY,
     seed:S.seed, same_sequence:CONFIG.SAME_SEQUENCE_FOR_ALL,
     started_at:S.startedAt, ended_at:new Date().toISOString(), end_reason:S.endReason,
     game_duration_s:(now()/1000).toFixed(1), time_tab_hidden_s:(S.hiddenMs/1000).toFixed(1),
