@@ -1,0 +1,642 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Case Opening Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#10131a; --panel:#181d27; --panel-2:#202634; --line:#2c3445;
+    --text:#e7ebf2; --muted:#8c96a8; --coin:#e8c15a; --go:#3ccf8e; --warn:#ff8a5c;
+    --display:"Chakra Petch", "Segoe UI", system-ui, sans-serif;
+    --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --cw:112px; --ch:128px;
+  }
+  *{box-sizing:border-box}
+  html,body{background:var(--bg)}
+  body{color:var(--text); font:15px/1.55 var(--body); padding-inline:16px; padding-block:20px 40px; min-height:100%}
+  .wrap{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:18px}
+  .wrap.wide{max-width:1120px}
+  .layout{display:grid; grid-template-columns:minmax(0,1fr) 290px; gap:20px; align-items:start}
+  .main{display:flex; flex-direction:column; gap:18px; min-width:0}
+  h1,h2,h3{font-family:var(--display); font-weight:700; letter-spacing:.01em; text-wrap:balance; margin:0}
+  h1{font-size:1.9rem; line-height:1.15}
+  h2{font-size:1.3rem}
+  h3{font-size:1.05rem}
+  p{margin:0; max-width:65ch}
+  .eyebrow{font:500 .72rem/1 var(--body); letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:22px; display:flex; flex-direction:column; gap:14px}
+  .stack{display:flex; flex-direction:column; gap:10px}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  ul{margin:0; padding-left:1.2em; display:flex; flex-direction:column; gap:6px; max-width:62ch}
+  .num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+  button{font:600 .95rem var(--body); border-radius:8px; border:1px solid transparent; padding:12px 18px; cursor:pointer; color:var(--text); background:var(--panel-2)}
+  button:focus-visible, input:focus-visible, select:focus-visible{outline:2px solid var(--coin); outline-offset:2px}
+  button:disabled{opacity:.45; cursor:not-allowed}
+  .btn-primary{background:var(--coin); color:#1b1606; font-family:var(--display); font-size:1.1rem; letter-spacing:.02em; padding:14px 26px}
+  .btn-primary:hover:not(:disabled){filter:brightness(1.08)}
+  .btn-go{background:var(--go); color:#062116}
+  .btn-ghost{background:transparent; border-color:var(--line); color:var(--muted)}
+  .btn-ghost:hover{color:var(--text); border-color:var(--muted)}
+  .btn-sell{padding:6px 12px; font-size:.82rem; background:transparent; border-color:var(--coin); color:var(--coin)}
+  .btn-sell:hover:not(:disabled){background:var(--coin); color:#1b1606}
+  label.check{display:flex; gap:10px; align-items:flex-start; max-width:62ch}
+  label.check input{margin-top:4px; width:18px; height:18px; accent-color:var(--go)}
+  .demo-bar{font-size:.82rem; color:var(--muted); border:1px dashed var(--line); border-radius:8px; padding:10px 12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .demo-bar select{background:var(--panel-2); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font:inherit}
+
+  /* game */
+  .topbar{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap}
+  .balance{display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:8px 16px 8px 10px}
+  .balance .num{font-size:1.35rem; color:var(--coin)}
+  .balance small{color:var(--muted); font-size:.75rem; letter-spacing:.1em; text-transform:uppercase}
+  .reel{position:relative; overflow:hidden; background:#0b0e14; border:1px solid var(--line); border-radius:10px; height:calc(var(--ch) + 28px); padding-block:14px}
+  .strip{display:flex; gap:6px; will-change:transform}
+  .marker{position:absolute; top:0; bottom:0; left:50%; width:2px; margin-left:-1px; background:var(--coin); box-shadow:0 0 12px var(--coin); z-index:2}
+  .marker::before,.marker::after{content:""; position:absolute; left:50%; transform:translateX(-50%); border:7px solid transparent}
+  .marker::before{top:0; border-top-color:var(--coin)}
+  .marker::after{bottom:0; border-bottom-color:var(--coin)}
+  .reel::before,.reel::after{content:""; position:absolute; top:0; bottom:0; width:60px; z-index:1; pointer-events:none}
+  .reel::before{left:0; background:linear-gradient(90deg,#0b0e14,transparent)}
+  .reel::after{right:0; background:linear-gradient(270deg,#0b0e14,transparent)}
+  .cell{flex:0 0 var(--cw); height:var(--ch); border-radius:6px; background:linear-gradient(180deg,var(--panel-2) 30%, color-mix(in srgb, var(--t) 28%, var(--panel-2))); border-bottom:4px solid var(--t); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:6px}
+  .cell svg.av{width:78px; height:78px}
+  .cell .coins{width:48px; height:48px}
+  .cell .amt{font:500 1.05rem var(--mono); color:var(--coin)}
+  .cell .nm{font-size:.7rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
+  .controls{display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:center}
+  .withdraw{display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center}
+  .withdraw .hint{color:var(--muted); font-size:.88rem}
+  .reveal{display:grid; grid-template-columns:auto 1fr; gap:18px; align-items:center; min-height:120px}
+  .reveal .big{width:110px; height:110px; border-radius:10px; display:grid; place-items:center; background:color-mix(in srgb, var(--t) 22%, var(--panel-2)); border:1px solid var(--t)}
+  .reveal .big svg.av{width:96px; height:96px}
+  .reveal .big .coins{width:64px; height:64px}
+  .tier{font:700 .75rem var(--display); letter-spacing:.14em; text-transform:uppercase; color:var(--t)}
+  .reveal h2{font-size:1.5rem}
+  .reveal .sub{color:var(--muted)}
+  .excl{display:inline-flex; align-items:center; gap:6px; font-size:.88rem; color:var(--text); background:color-mix(in srgb, var(--t) 16%, transparent); border:1px solid color-mix(in srgb, var(--t) 45%, transparent); border-radius:999px; padding:3px 10px; width:fit-content}
+  .excl b{font-family:var(--mono); color:var(--t)}
+  .placeholder{color:var(--muted)}
+  .drops{display:flex; gap:6px; flex-wrap:wrap}
+  .drop{width:46px; height:46px; border-radius:6px; background:var(--panel-2); border-bottom:3px solid var(--t); display:grid; place-items:center; font:500 .72rem var(--mono); color:var(--coin)}
+  .drop svg.av{width:38px; height:38px}
+  .confirm{border:1px solid var(--warn); background:color-mix(in srgb, var(--warn) 10%, var(--panel))}
+
+  /* inventory */
+  .inv-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap}
+  .inv-head .num{color:var(--coin)}
+  .inv{display:grid; grid-template-columns:repeat(auto-fill, minmax(128px,1fr)); gap:10px}
+  .inv-item{background:var(--panel-2); border-radius:8px; border-bottom:3px solid var(--t); padding:10px; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center}
+  .inv-item svg.av{width:64px; height:64px}
+  .inv-item .nm{font-size:.8rem; font-weight:600; line-height:1.2}
+  .inv-item .val{font:500 .8rem var(--mono); color:var(--coin)}
+
+  /* rarity panel */
+  .side{position:sticky; top:calc(env(safe-area-inset-top, 0px) + 16px); display:flex; flex-direction:column; gap:12px}
+  .side .card{padding:16px; gap:10px}
+  .odds{display:flex; flex-direction:column; gap:2px}
+  .tier-group{display:flex; flex-direction:column; gap:2px; padding-top:8px}
+  .tier-group + .tier-group{border-top:1px solid var(--line); margin-top:6px}
+  .odd{display:grid; grid-template-columns:36px 1fr auto; gap:10px; align-items:center; padding:5px 4px; border-radius:6px}
+  .odd.owned{background:color-mix(in srgb, var(--t) 14%, transparent)}
+  .odd .ic{width:36px; height:36px; border-radius:6px; background:var(--panel-2); border-bottom:2px solid var(--t); display:grid; place-items:center}
+  .odd .ic svg.av{width:30px; height:30px}
+  .odd .ic .coins{width:22px; height:22px}
+  .odd .nm{font-size:.84rem; font-weight:600; line-height:1.15}
+  .odd .who{font-size:.72rem; color:var(--muted); line-height:1.2}
+  .odd .pct{font:500 .9rem var(--mono); color:var(--t); text-align:right}
+  .odd .one{display:block; font-size:.68rem; color:var(--muted); font-family:var(--body)}
+
+  /* end */
+  table{border-collapse:collapse; font-size:.85rem; width:100%}
+  th,td{text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); white-space:nowrap}
+  td.num,th.num{text-align:right}
+  th{color:var(--muted); font-weight:500}
+  .scroll{overflow-x:auto; max-height:320px; overflow-y:auto; border:1px solid var(--line); border-radius:8px}
+  .code{font:500 1.4rem var(--mono); letter-spacing:.12em; color:var(--coin)}
+  textarea{width:100%; min-height:120px; background:#0b0e14; color:var(--text); border:1px solid var(--line); border-radius:8px; font:12px/1.4 var(--mono); padding:10px}
+
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr}
+    .side{position:static}
+  }
+  @media (max-width:520px){
+    :root{--cw:92px; --ch:110px}
+    .cell svg.av{width:64px; height:64px}
+    h1{font-size:1.55rem}
+    .reveal{grid-template-columns:1fr; justify-items:start}
+    .card{padding:18px}
+  }
+  @media (prefers-reduced-motion: reduce){ .strip{transition-duration:.6s !important} }
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+/* =====================================================================
+   RESEARCHER SETTINGS: edit these before running the study.
+   ===================================================================== */
+const CONFIG = {
+  START_BALANCE: 1000,        // coins at the start
+  SPIN_COST: 100,             // coins per case opening
+  WITHDRAW_AMOUNT: 500,       // coins added each time the participant withdraws more
+  MAX_WITHDRAWALS: null,      // null = unlimited; or a number, e.g. 5
+  TIME_LIMIT_MIN: 15,         // hard session cap in minutes (participant is not shown a timer)
+  MAX_SPINS: 300,             // safety cap
+
+  // Outcome sequence. true = every participant gets the SAME pre-generated sequence of
+  // outcomes (removes luck as a confound). false = new random sequence per person (seed is logged).
+  SAME_SEQUENCE_FOR_ALL: true,
+  SEED: 20260944,             // chosen so early outcomes are typical: no Legendary in the first 10 spins, ~96% return over 60
+
+  // Skins group. "sell" = won skins go to an inventory and the participant can sell them for coins.
+  // "auto" = a skin's value is added to the balance straight away (balances then match the currency group).
+  SKINS_MODE: "sell",
+
+  // Rarity panel ("X% of players got this"). Show it to the currency group too?
+  // true keeps the groups matched apart from the reward type; false shows it to the skins group only.
+  RARITY_PANEL_FOR_CURRENCY: true,
+
+  // Data saving. Leave DATAPIPE_ID empty to run in demo mode (data shown on screen, nothing sent).
+  // With an ID from pipe.jspsych.org, data is saved to your OSF project and groups are balanced.
+  DATAPIPE_ID: "tG82musgz2sa",
+  // Optional: send participants on to your questionnaire. pid, cond and code are appended.
+  REDIRECT_URL: "",
+
+  STUDY_TITLE: "Decision-making in a simple online game",
+  RESEARCHER: "[Your name], [Department of Psychology, University]",
+  CONTACT: "[your.email@university.edu]",
+  HELP_TEXT: "If gambling is causing problems for you or someone you know, free and confidential support is available: [insert national gambling helpline for your country].",
+};
+
+const TIERS = [
+  {id:"common",    label:"Common",    color:"#8e9bb0"},
+  {id:"uncommon",  label:"Uncommon",  color:"#4b7bff"},
+  {id:"rare",      label:"Rare",      color:"#9a5cff"},
+  {id:"epic",      label:"Epic",      color:"#e03fd8"},
+  {id:"legendary", label:"Legendary", color:"#ff5a4e"},
+];
+
+// Every possible drop. p = chance per case in % (must sum to 100); it is also the
+// "% of players got this" figure. value = coins (the sell price, or the coin prize in the currency group).
+// Expected return per case = sum(p/100 * value) = 96.4 coins for a 100-coin case.
+const ITEMS = [
+  {tier:"common",    p:22,   value:15,   name:"Pebble",           c1:"#9aa3ad", c2:"#d7dce1", ear:"bear",    eye:"dot"},
+  {tier:"common",    p:20,   value:20,   name:"Moss",             c1:"#7e9c6a", c2:"#c9d8b4", ear:"cat",     eye:"sleepy"},
+  {tier:"common",    p:18,   value:25,   name:"Dusk",             c1:"#8a7f99", c2:"#cfc6da", ear:"fin",     eye:"dot"},
+  {tier:"uncommon",  p:10,   value:70,   name:"Tidewalker",       c1:"#3f7fd0", c2:"#a9d3ff", ear:"fin",     eye:"wide"},
+  {tier:"uncommon",  p:8.5,  value:80,   name:"Copperhorn",       c1:"#b8683a", c2:"#f0c29a", ear:"horn",    eye:"dot"},
+  {tier:"uncommon",  p:6.5,  value:95,   name:"Juniper",          c1:"#3e9a86", c2:"#b7ecdc", ear:"antenna", eye:"wide"},
+  {tier:"rare",      p:4.5,  value:170,  name:"Nightglass",       c1:"#3b3f8f", c2:"#8f9bff", ear:"cat",     eye:"visor"},
+  {tier:"rare",      p:3.2,  value:210,  name:"Ember Warden",     c1:"#c2452d", c2:"#ffb36b", ear:"horn",    eye:"wide",   extra:"mask"},
+  {tier:"rare",      p:2.3,  value:250,  name:"Frostbyte",        c1:"#5fb3d8", c2:"#eaf8ff", ear:"antenna", eye:"visor"},
+  {tier:"epic",      p:1.8,  value:500,  name:"Starweaver",       c1:"#7a2fbf", c2:"#e3b6ff", ear:"cat",     eye:"wide",   extra:"spark"},
+  {tier:"epic",      p:1.3,  value:600,  name:"Violet Monarch",   c1:"#a02a8f", c2:"#ffb3ec", ear:"bear",    eye:"sleepy", extra:"crown"},
+  {tier:"epic",      p:0.9,  value:750,  name:"Tempest",          c1:"#1f6f8b", c2:"#7ff0e0", ear:"horn",    eye:"visor",  extra:"spark"},
+  {tier:"legendary", p:0.5,  value:1600, name:"Aurora Sovereign", c1:"#d23a4a", c2:"#ffd1a1", ear:"cat",     eye:"wide",   extra:"crown"},
+  {tier:"legendary", p:0.35, value:2000, name:"Gilded Oracle",    c1:"#c9901e", c2:"#fff0b8", ear:"antenna", eye:"sleepy", extra:"halo"},
+  {tier:"legendary", p:0.15, value:4000, name:"Eclipse",          c1:"#2e2838", c2:"#ff6a5a", ear:"horn",    eye:"visor",  extra:"halo"},
+];
+
+/* ===================================================================== */
+
+const DEMO = !CONFIG.DATAPIPE_ID;
+const STRIP_LEN = 60, WIN_INDEX = 48, SPIN_MS = 4800;
+const $ = (s, el=document) => el.querySelector(s);
+const app = $("#app");
+const fmt = n => n.toLocaleString("en-US");
+const tierById = id => TIERS.find(t => t.id === id);
+const pctText = p => (p >= 1 ? String(+p.toFixed(1)) : String(+p.toFixed(2))) + "%";
+const oneIn = p => "1 in " + fmt(Math.round(100 / p));
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function pickItem(r){let acc=0;for(let i=0;i<ITEMS.length;i++){acc+=ITEMS[i].p/100;if(r<acc)return i}return ITEMS.length-1}
+function params(){try{return new URLSearchParams(location.search)}catch(e){return new URLSearchParams()}}
+function makeCode(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<6;i++)s+=c[Math.floor(Math.random()*c.length)];return s}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+/* ---------- drawing ---------- */
+function avatarSVG(s){
+  const ink="#14161c"; let ears="", eyes="", extra="", mask="";
+  if(s.ear==="cat") ears=`<path d="M22 44 L28 12 L48 32Z" fill="${s.c1}"/><path d="M78 44 L72 12 L52 32Z" fill="${s.c1}"/><path d="M28 36 L30 20 L40 32Z" fill="${s.c2}"/><path d="M72 36 L70 20 L60 32Z" fill="${s.c2}"/>`;
+  if(s.ear==="bear") ears=`<circle cx="26" cy="30" r="13" fill="${s.c1}"/><circle cx="74" cy="30" r="13" fill="${s.c1}"/><circle cx="26" cy="30" r="6" fill="${s.c2}"/><circle cx="74" cy="30" r="6" fill="${s.c2}"/>`;
+  if(s.ear==="horn") ears=`<path d="M30 34 Q16 10 32 10 Q36 22 42 30Z" fill="${s.c2}"/><path d="M70 34 Q84 10 68 10 Q64 22 58 30Z" fill="${s.c2}"/>`;
+  if(s.ear==="antenna") ears=`<path d="M42 30 L32 8 M58 30 L68 8" stroke="${s.c1}" stroke-width="3" fill="none"/><circle cx="32" cy="8" r="5" fill="${s.c2}"/><circle cx="68" cy="8" r="5" fill="${s.c2}"/>`;
+  if(s.ear==="fin") ears=`<path d="M50 4 L62 32 L38 32Z" fill="${s.c2}"/>`;
+  if(s.eye==="dot") eyes=`<circle cx="38" cy="54" r="5" fill="${ink}"/><circle cx="62" cy="54" r="5" fill="${ink}"/><circle cx="39.5" cy="52.5" r="1.6" fill="#fff"/><circle cx="63.5" cy="52.5" r="1.6" fill="#fff"/>`;
+  if(s.eye==="wide") eyes=`<circle cx="37" cy="53" r="9" fill="#fff"/><circle cx="63" cy="53" r="9" fill="#fff"/><circle cx="38" cy="54" r="4.5" fill="${ink}"/><circle cx="64" cy="54" r="4.5" fill="${ink}"/>`;
+  if(s.eye==="sleepy") eyes=`<path d="M31 55 Q37 49 43 55 M57 55 Q63 49 69 55" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  if(s.eye==="visor") eyes=`<rect x="25" y="45" width="50" height="16" rx="8" fill="${ink}"/><path d="M31 50 H48" stroke="${s.c2}" stroke-width="3" stroke-linecap="round"/>`;
+  if(s.extra==="mask") mask=`<path d="M20 50 Q50 38 80 50 L80 60 Q50 50 20 60Z" fill="${ink}" opacity=".55"/>`;
+  if(s.extra==="crown") extra=`<path d="M32 26 L37 10 L44 20 L50 6 L56 20 L63 10 L68 26Z" fill="#f3c64f" stroke="#a87b12" stroke-width="1.5"/>`;
+  if(s.extra==="halo") extra=`<ellipse cx="50" cy="14" rx="22" ry="5.5" fill="none" stroke="#ffe39a" stroke-width="3.5"/>`;
+  if(s.extra==="spark") extra=`<path d="M14 22 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3Z M86 70 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2Z M84 18 l1.5 4 4 1.5 -4 1.5 -1.5 4 -1.5 -4 -4 -1.5 4 -1.5Z" fill="#fff6c9"/>`;
+  return `<svg class="av" viewBox="0 0 100 100" aria-hidden="true">${ears}<ellipse cx="50" cy="60" rx="34" ry="32" fill="${s.c1}"/><ellipse cx="50" cy="72" rx="20" ry="14" fill="${s.c2}" opacity=".9"/>${mask}${eyes}<path d="M45 72 Q50 76 55 72" stroke="${ink}" stroke-width="2.5" fill="none" stroke-linecap="round"/>${extra}</svg>`;
+}
+const coinSVG = cls => `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="32" cy="46" rx="22" ry="8" fill="#a8801e"/><rect x="10" y="38" width="44" height="8" fill="#a8801e"/><ellipse cx="32" cy="38" rx="22" ry="8" fill="#e8c15a"/><ellipse cx="32" cy="32" rx="22" ry="8" fill="#a8801e"/><rect x="10" y="24" width="44" height="8" fill="#a8801e"/><ellipse cx="32" cy="24" rx="22" ry="8" fill="#f2d27a"/><ellipse cx="32" cy="24" rx="12" ry="4" fill="none" stroke="#a8801e" stroke-width="2"/></svg>`;
+
+function itemFor(idx){const it=ITEMS[idx];return {...it, idx, tierObj:tierById(it.tier)}}
+function cellHTML(it){
+  const inner = S.cond==="skins"
+    ? `${avatarSVG(it)}<span class="nm">${esc(it.name)}</span>`
+    : `${coinSVG("coins")}<span class="amt">+${fmt(it.value)}</span>`;
+  return `<div class="cell" style="--t:${it.tierObj.color}">${inner}</div>`;
+}
+
+/* ---------- pre-generated outcomes (identical across groups) ---------- */
+function spinPlan(i){
+  const rng = mulberry32((S.seed ^ Math.imul(i+1, 2654435761)) >>> 0);
+  const win = pickItem(rng());
+  const cells = [];
+  for(let k=0;k<STRIP_LEN;k++) cells.push(k===WIN_INDEX ? win : pickItem(rng()));
+  return {win, cells, jitter:(rng()-.5)*0.7};
+}
+
+/* ---------- state + logging ---------- */
+const P = params();
+const S = {
+  pid: P.get("pid") || P.get("PROLIFIC_PID") || ("p" + Date.now().toString(36) + Math.random().toString(36).slice(2,6)),
+  cond: null, seed: CONFIG.SAME_SEQUENCE_FOR_ALL ? CONFIG.SEED : Math.floor(Math.random()*2**31),
+  balance: CONFIG.START_BALANCE, spins:0, withdrawals:0, withdrawn:0, spent:0, won:0,
+  sold:0, soldValue:0, inventory:[], nextUid:1, obtained:new Set(),
+  spinning:false, ended:false, t0:null, lastReveal:null, outAt:null,
+  hiddenMs:0, hiddenAt:null, firstWithdrawSpin:null, latencies:[], drops:[],
+  events:[], startedAt:null, endReason:null, code:makeCode(), pendingEnd:null,
+};
+const sellMode = () => S.cond==="skins" && CONFIG.SKINS_MODE==="sell";
+const now = () => Math.round(performance.now() - S.t0);
+const invValue = () => S.inventory.reduce((s,x)=>s+ITEMS[x.idx].value,0);
+function log(type, extra={}){ S.events.push({pid:S.pid, condition:S.cond, event:type, t_ms:now(), clock:new Date().toISOString(), spin_n:S.spins, balance:S.balance, inventory_n:S.inventory.length, inventory_value:invValue(), ...extra}); }
+
+document.addEventListener("visibilitychange", () => {
+  if(!S.t0 || S.ended) return;
+  if(document.hidden){ S.hiddenAt = performance.now(); log("tab_hidden"); }
+  else if(S.hiddenAt){ const d = performance.now()-S.hiddenAt; S.hiddenMs += d; S.hiddenAt=null; log("tab_visible", {hidden_ms:Math.round(d)}); }
+});
+
+/* ---------- screens ---------- */
+function screenConsent(){
+  app.className = "wrap";
+  app.innerHTML = `
+    ${DEMO ? `<div class="demo-bar"><strong>Demo mode.</strong> Nothing is sent anywhere; data appears on the last screen.
+      <label>Group <select id="demoCond"><option value="random">Random</option><option value="skins">Skins</option><option value="currency">Currency</option></select></label></div>` : ""}
+    <div class="card">
+      <span class="eyebrow">Participant information</span>
+      <h1>${esc(CONFIG.STUDY_TITLE)}</h1>
+      <p>This study is part of a bachelor's thesis by ${esc(CONFIG.RESEARCHER)}. You will play a short game in which you open virtual cases using play coins. It takes about 5 to 15 minutes.</p>
+      <ul>
+        <li>The coins and items are not real and have no monetary value. No real money is involved at any point.</li>
+        <li>You can stop playing whenever you like, and you may withdraw from the study at any time without giving a reason.</li>
+        <li>We record your choices in the game and how long they take. No names or contact details are collected.</li>
+        <li>You must be 18 or older to take part.</li>
+      </ul>
+      <p>Questions: <span class="num">${esc(CONFIG.CONTACT)}</span></p>
+      <label class="check"><input type="checkbox" id="agree"> <span>I am 18 or older, I have read the information above, and I agree to take part.</span></label>
+      <div class="row"><button class="btn-go" id="go" disabled>Continue</button></div>
+    </div>`;
+  const agree=$("#agree"), go=$("#go");
+  agree.onchange = () => go.disabled = !agree.checked;
+  go.onclick = async () => {
+    go.disabled = true; go.textContent = "Loading…";
+    S.cond = await assignCondition(DEMO ? $("#demoCond").value : null);
+    screenInstructions();
+  };
+}
+
+async function assignCondition(demoChoice){
+  const fromUrl = P.get("cond");
+  if(demoChoice && demoChoice!=="random") return demoChoice;
+  if(fromUrl==="skins" || fromUrl==="currency") return fromUrl;
+  if(!DEMO){
+    try{
+      const r = await fetch("https://pipe.jspsych.org/api/condition/", {method:"POST", headers:{"Content-Type":"application/json", Accept:"*/*"}, body:JSON.stringify({experimentID:CONFIG.DATAPIPE_ID})});
+      const j = await r.json();
+      if(typeof j.condition === "number") return j.condition===0 ? "skins" : "currency";
+    }catch(e){}
+  }
+  return Math.random()<.5 ? "skins" : "currency";
+}
+
+function screenInstructions(){
+  const skins = S.cond==="skins";
+  const rule = !skins ? "Each case contains a coin prize that is added to your balance. Rarer prizes are worth more."
+    : sellMode() ? "Each case contains an avatar that goes into your inventory. Rarer avatars are worth more, and you can sell any avatar for coins."
+    : "Each case contains an avatar. Rarer avatars are worth more, and their value is added to your balance.";
+  app.innerHTML = `
+    <div class="card">
+      <span class="eyebrow">How it works</span>
+      <h1>Open cases with your coins</h1>
+      <ul>
+        <li>You start with <strong class="num">${fmt(CONFIG.START_BALANCE)}</strong> coins. Opening a case costs <strong class="num">${fmt(CONFIG.SPIN_COST)}</strong> coins.</li>
+        <li>${rule}</li>
+        <li>If you run out of coins, you can withdraw more and keep playing.</li>
+        <li>Play as long as you want. Press <em>Stop playing</em> whenever you want to finish.</li>
+      </ul>
+      <div class="row">${TIERS.map(t=>`<span class="tier" style="--t:${t.color}">${t.label}</span>`).join('<span class="placeholder">·</span>')}</div>
+      <div class="row"><button class="btn-go" id="start">Start the game</button></div>
+    </div>`;
+  $("#start").onclick = startGame;
+}
+
+function startGame(){
+  S.t0 = performance.now(); S.startedAt = new Date().toISOString();
+  log("game_start", {seed:S.seed});
+  const panel = S.cond==="skins" || CONFIG.RARITY_PANEL_FOR_CURRENCY;
+  app.className = panel ? "wrap wide" : "wrap";
+  app.innerHTML = `
+    ${DEMO ? `<div class="demo-bar"><strong>Demo mode</strong> · group: ${S.cond}</div>` : ""}
+    <div class="${panel ? "layout" : "main"}">
+      <div class="main">
+        <div class="topbar">
+          <div class="balance">${coinSVG("coins").replace('class="coins"','width="28" height="28"')}<span class="num" id="bal"></span><small>coins</small></div>
+          <button class="btn-ghost" id="stop">Stop playing</button>
+        </div>
+        <div class="reel"><div class="marker"></div><div class="strip" id="strip"></div></div>
+        <div class="controls" id="controls"></div>
+        <div class="card" id="reveal"></div>
+        ${sellMode() ? `<div class="card" id="invCard"></div>` : ""}
+        <div class="stack"><span class="eyebrow">Recent drops</span><div class="drops" id="drops"><span class="placeholder">Nothing yet</span></div></div>
+      </div>
+      ${panel ? `<aside class="side"><div class="card" id="odds"></div></aside>` : ""}
+    </div>`;
+  $("#stop").onclick = askStop;
+  renderStrip(spinPlan(0).cells, false);
+  renderBalance(); renderControls(); renderReveal(null); renderInventory(); renderOdds();
+  S.lastReveal = performance.now();
+  S.timer = setInterval(() => {
+    if(S.ended) return;
+    if(now() >= CONFIG.TIME_LIMIT_MIN*60000){ if(S.spinning) S.pendingEnd="time_limit"; else endGame("time_limit"); }
+  }, 1000);
+}
+
+function renderBalance(){ $("#bal").textContent = fmt(S.balance); }
+
+function renderOdds(){
+  const el = $("#odds"); if(!el) return;
+  const skins = S.cond==="skins";
+  const groups = TIERS.map(t => {
+    const items = ITEMS.map((it,i)=>({...it, i})).filter(it => it.tier===t.id);
+    if(skins){
+      const rows = items.map(it => `
+        <div class="odd ${S.obtained.has(it.i)?"owned":""}" style="--t:${t.color}">
+          <div class="ic">${avatarSVG(it)}</div>
+          <div><div class="nm">${esc(it.name)}${S.obtained.has(it.i) ? ` <span class="who">· unboxed</span>` : ""}</div><div class="who">${pctText(it.p)} of players got this</div></div>
+          <div class="pct">${pctText(it.p)}<span class="one">${oneIn(it.p)}</span></div>
+        </div>`).join("");
+      return `<div class="tier-group"><span class="tier" style="--t:${t.color}">${t.label}</span>${rows}</div>`;
+    }
+    const p = items.reduce((s,x)=>s+x.p,0);
+    const vals = items.map(x=>x.value);
+    const owned = items.some(x=>S.obtained.has(x.i));
+    return `<div class="tier-group"><div class="odd ${owned?"owned":""}" style="--t:${t.color}">
+        <div class="ic">${coinSVG("coins")}</div>
+        <div><div class="nm">${t.label} prize</div><div class="who"><span class="num">${fmt(Math.min(...vals))}–${fmt(Math.max(...vals))}</span> coins · ${pctText(p)} of players got this</div></div>
+        <div class="pct">${pctText(p)}<span class="one">${oneIn(p)}</span></div>
+      </div></div>`;
+  }).join("");
+  el.innerHTML = `<span class="eyebrow">Drop rates</span><h3>${skins ? "How rare is each avatar?" : "How rare is each prize?"}</h3><div class="odds">${groups}</div>`;
+}
+
+function renderControls(){
+  const c = $("#controls"); if(!c) return;
+  const canAfford = S.balance >= CONFIG.SPIN_COST;
+  const canWithdraw = CONFIG.MAX_WITHDRAWALS===null || S.withdrawals < CONFIG.MAX_WITHDRAWALS;
+  const sellHint = sellMode() && S.inventory.length ? `<span class="hint">You can also sell avatars from your inventory below.</span>` : "";
+  if(canAfford || S.spinning){
+    S.outAt = null;
+    c.innerHTML = `<button class="btn-primary" id="spin" ${S.spinning?"disabled":""}>Open case · <span class="num">${fmt(CONFIG.SPIN_COST)}</span></button>`;
+    $("#spin").onclick = spin;
+    return;
+  }
+  if(S.outAt===null){ S.outAt = performance.now(); log("out_of_coins"); }
+  if(canWithdraw){
+    c.innerHTML = `<div class="withdraw"><p>You don't have enough coins to open another case.</p>
+      <button class="btn-primary" id="wd">Withdraw <span class="num">${fmt(CONFIG.WITHDRAW_AMOUNT)}</span> coins</button>${sellHint}</div>`;
+    $("#wd").onclick = withdraw;
+  } else {
+    c.innerHTML = `<div class="withdraw"><p class="placeholder">You have used all available withdrawals.</p>${sellHint || `<span class="hint">Press <em>Stop playing</em> to finish.</span>`}</div>`;
+  }
+}
+
+function renderStrip(cells, animate){
+  const strip = $("#strip");
+  strip.style.transition = "none"; strip.style.transform = "translateX(0)";
+  strip.innerHTML = cells.map(i => cellHTML(itemFor(i))).join("");
+  if(!animate){
+    const cw = strip.firstElementChild.getBoundingClientRect().width + 6;
+    const w = strip.parentElement.clientWidth;
+    strip.style.transform = `translateX(${-(10*cw + cw/2 - w/2)}px)`;
+  }
+}
+
+function renderReveal(it){
+  const r = $("#reveal");
+  if(!it){ r.innerHTML = `<p class="placeholder">Open a case to see what you get.</p>`; return; }
+  const skins = S.cond==="skins";
+  const c = it.tierObj.color;
+  const sub = !skins ? "Added to your balance"
+    : sellMode() ? `Worth <span class="num">${fmt(it.value)}</span> coins · added to your inventory`
+    : `Worth <span class="num">${fmt(it.value)}</span> coins · added to your balance`;
+  const exclusive = skins || CONFIG.RARITY_PANEL_FOR_CURRENCY;
+  r.innerHTML = `<div class="reveal" style="--t:${c}">
+    <div class="big">${skins ? avatarSVG(it) : coinSVG("coins")}</div>
+    <div class="stack" style="gap:6px">
+      <span class="tier">${it.tierObj.label}</span>
+      <h2>${skins ? esc(it.name) : `+${fmt(it.value)} coins`}</h2>
+      ${exclusive ? `<span class="excl">Only <b>${pctText(skins ? it.p : tierP(it.tier))}</b> of players got this</span>` : ""}
+      <span class="sub">${sub}</span>
+    </div></div>`;
+}
+const tierP = id => ITEMS.filter(x=>x.tier===id).reduce((s,x)=>s+x.p,0);
+
+function renderInventory(){
+  const el = $("#invCard"); if(!el) return;
+  const items = S.inventory.slice().sort((a,b)=>ITEMS[b.idx].value-ITEMS[a.idx].value);
+  el.innerHTML = `
+    <div class="inv-head"><div class="stack" style="gap:4px"><span class="eyebrow">Your inventory</span>
+      <h3>${S.inventory.length} avatar${S.inventory.length===1?"":"s"} · worth <span class="num">${fmt(invValue())}</span> coins</h3></div></div>
+    ${items.length ? `<div class="inv">${items.map(x => { const it=itemFor(x.idx); return `
+      <div class="inv-item" style="--t:${it.tierObj.color}">
+        ${avatarSVG(it)}<span class="nm">${esc(it.name)}</span>
+        <span class="tier" style="font-size:.64rem">${it.tierObj.label} · ${pctText(it.p)}</span>
+        <button class="btn-sell" data-uid="${x.uid}" ${S.spinning?"disabled":""}>Sell · <span class="num">${fmt(it.value)}</span></button>
+      </div>`}).join("")}</div>`
+    : `<p class="placeholder">Avatars you unbox appear here. You can keep them or sell them for coins.</p>`}`;
+  el.querySelectorAll("[data-uid]").forEach(b => b.onclick = () => sell(+b.dataset.uid));
+}
+
+function renderDrops(){
+  const d=$("#drops");
+  d.innerHTML = S.drops.slice(-14).reverse().map(it =>
+    `<div class="drop" style="--t:${it.tierObj.color}" title="${esc(S.cond==="skins"?it.name:it.tierObj.label)}">${S.cond==="skins" ? avatarSVG(it) : "+"+fmt(it.value)}</div>`).join("");
+}
+
+function spin(){
+  if(S.spinning || S.ended || S.balance < CONFIG.SPIN_COST) return;
+  const latency = Math.round(performance.now() - S.lastReveal);
+  const plan = spinPlan(S.spins);
+  const before = S.balance;
+  S.spinning = true; S.balance -= CONFIG.SPIN_COST; S.spent += CONFIG.SPIN_COST;
+  renderBalance(); renderControls(); renderInventory(); $("#stop").disabled = true;
+  log("spin_click", {latency_ms:latency, balance_before:before});
+  S.latencies.push(latency);
+
+  renderStrip(plan.cells, true);
+  const strip = $("#strip");
+  const cw = strip.firstElementChild.getBoundingClientRect().width + 6;
+  const w = strip.parentElement.clientWidth;
+  const x = -(WIN_INDEX*cw + cw/2 + plan.jitter*(cw-6) - w/2);
+  strip.getBoundingClientRect();
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  strip.style.transition = `transform ${reduce?600:SPIN_MS}ms cubic-bezier(.1,.75,.18,1)`;
+  strip.style.transform = `translateX(${x}px)`;
+  setTimeout(() => finishSpin(plan), (reduce?600:SPIN_MS) + 150);
+}
+
+function finishSpin(plan){
+  const it = itemFor(plan.win);
+  S.spins++;
+  let credited = 0;
+  if(sellMode()) S.inventory.push({uid:S.nextUid++, idx:it.idx, gotAt:performance.now(), spin:S.spins});
+  else { credited = it.value; S.balance += credited; S.won += credited; }
+  S.obtained.add(it.idx);
+  S.drops.push(it);
+  log("spin_result", {tier:it.tier, item:S.cond==="skins"?it.name:"coins", item_p:it.p, value:it.value, credited});
+  S.spinning = false; S.lastReveal = performance.now();
+  renderBalance(); renderReveal(it); renderDrops(); renderInventory(); renderOdds(); renderControls(); $("#stop").disabled = false;
+  if(S.pendingEnd) return endGame(S.pendingEnd);
+  if(S.spins >= CONFIG.MAX_SPINS) return endGame("max_spins");
+}
+
+function sell(uid){
+  if(S.spinning || S.ended) return;
+  const k = S.inventory.findIndex(x=>x.uid===uid); if(k<0) return;
+  const x = S.inventory[k], it = ITEMS[x.idx];
+  const wasBroke = S.balance < CONFIG.SPIN_COST;
+  S.inventory.splice(k,1);
+  S.balance += it.value; S.won += it.value; S.sold++; S.soldValue += it.value;
+  log("sell", {tier:it.tier, item:it.name, item_p:it.p, value:it.value, held_ms:Math.round(performance.now()-x.gotAt), obtained_spin:x.spin, while_out_of_coins:wasBroke});
+  renderBalance(); renderInventory(); renderControls();
+}
+
+function withdraw(){
+  const latency = S.outAt ? Math.round(performance.now()-S.outAt) : null;
+  S.withdrawals++; S.withdrawn += CONFIG.WITHDRAW_AMOUNT; S.balance += CONFIG.WITHDRAW_AMOUNT;
+  if(S.firstWithdrawSpin===null) S.firstWithdrawSpin = S.spins;
+  log("withdraw", {amount:CONFIG.WITHDRAW_AMOUNT, latency_ms:latency, withdrawal_n:S.withdrawals});
+  S.outAt = null; S.lastReveal = performance.now();
+  renderBalance(); renderControls();
+}
+
+function askStop(){
+  if(S.spinning) return;
+  log("stop_clicked");
+  const c = $("#controls");
+  c.innerHTML = `<div class="card confirm" style="width:100%"><p>Finish the game now? You won't be able to come back to it.</p>
+    <div class="row"><button class="btn-go" id="yes">Yes, finish</button><button class="btn-ghost" id="no">Keep playing</button></div></div>`;
+  $("#yes").onclick = () => endGame("stopped");
+  $("#no").onclick = () => { log("stop_cancelled"); renderControls(); };
+}
+
+/* ---------- end + data ---------- */
+function summary(){
+  const lat = S.latencies.slice(1);
+  const mean = lat.length ? Math.round(lat.reduce((a,b)=>a+b,0)/lat.length) : "";
+  return {
+    pid:S.pid, condition:S.cond, skins_mode:CONFIG.SKINS_MODE, rarity_panel_currency:CONFIG.RARITY_PANEL_FOR_CURRENCY,
+    seed:S.seed, same_sequence:CONFIG.SAME_SEQUENCE_FOR_ALL,
+    started_at:S.startedAt, ended_at:new Date().toISOString(), end_reason:S.endReason,
+    game_duration_s:(now()/1000).toFixed(1), time_tab_hidden_s:(S.hiddenMs/1000).toFixed(1),
+    n_spins:S.spins, n_withdrawals:S.withdrawals, total_withdrawn:S.withdrawn,
+    spins_after_first_withdrawal: S.firstWithdrawSpin===null ? 0 : S.spins - S.firstWithdrawSpin,
+    n_sold:S.sold, coins_from_sales:S.soldValue, items_kept:S.inventory.length, value_kept:invValue(),
+    total_spent:S.spent, coins_received:S.won, final_balance:S.balance,
+    net_result:S.balance + invValue() - CONFIG.START_BALANCE - S.withdrawn,
+    mean_post_outcome_pause_ms:mean, start_balance:CONFIG.START_BALANCE, spin_cost:CONFIG.SPIN_COST,
+    withdraw_amount:CONFIG.WITHDRAW_AMOUNT, completion_code:S.code,
+  };
+}
+function toCSV(rows){
+  const cols = [...rows.reduce((s,r)=>{Object.keys(r).forEach(k=>s.add(k));return s}, new Set())];
+  const q = v => v===undefined||v===null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g,'""')}"` : String(v);
+  return [cols.join(","), ...rows.map(r => cols.map(c=>q(r[c])).join(","))].join("\n");
+}
+async function saveFile(filename, data){
+  const r = await fetch("https://pipe.jspsych.org/api/data/", {method:"POST", headers:{"Content-Type":"application/json", Accept:"*/*"}, body:JSON.stringify({experimentID:CONFIG.DATAPIPE_ID, filename, data})});
+  if(!r.ok) throw new Error("HTTP " + r.status);
+}
+
+async function endGame(reason){
+  if(S.ended) return;
+  if(S.hiddenAt){ S.hiddenMs += performance.now()-S.hiddenAt; S.hiddenAt=null; }
+  S.endReason = reason; log("game_end", {reason});
+  S.ended = true; clearInterval(S.timer);
+  const sum = summary();
+  const eventsCSV = toCSV(S.events), summaryCSV = toCSV([sum]);
+
+  const reasonText = reason==="time_limit" ? "The time for this game is up." : reason==="max_spins" ? "You have reached the maximum number of cases." : "You finished the game.";
+  app.className = "wrap";
+  app.innerHTML = `
+    <div class="card">
+      <span class="eyebrow">Thank you</span>
+      <h1>${reasonText}</h1>
+      <p id="status">${DEMO ? "Demo mode: nothing was sent." : "Saving your responses. Please keep this page open…"}</p>
+      <div class="stack" style="gap:4px"><span class="eyebrow">Completion code</span><span class="code">${S.code}</span></div>
+      <div id="next"></div>
+    </div>
+    <div class="card">
+      <span class="eyebrow">About this study</span>
+      <h2>What the game was really testing</h2>
+      <p>You were in one of two groups. One group won collectible avatars, the other won coin prizes. The chances of each outcome were exactly the same in both groups. We want to know whether the kind of reward changes how long people keep playing and how often they add more coins.</p>
+      <p>The "% of players got this" figures were not counts of real players. They were the fixed chances of each outcome, set by the researcher to make rare items feel exclusive.</p>
+      <p>The game was set so that, on average, each case returned less than it cost (about 96 coins back per 100 spent), like real gambling products. Over time the player always loses. Nothing you won or lost was real.</p>
+      <p>${esc(CONFIG.HELP_TEXT)}</p>
+      <p>Questions or wish to withdraw your data: <span class="num">${esc(CONFIG.CONTACT)}</span>, quoting your completion code.</p>
+    </div>
+    ${DEMO ? researcherPanel(sum, eventsCSV, summaryCSV) : ""}`;
+
+  if(DEMO){ wireCopy(eventsCSV, summaryCSV); return; }
+  const status = $("#status");
+  let ok = false;
+  for(let attempt=0; attempt<3 && !ok; attempt++){
+    try{
+      await saveFile(`${S.pid}_summary.csv`, summaryCSV);
+      await saveFile(`${S.pid}_events.csv`, eventsCSV);
+      ok = true;
+    }catch(e){ await new Promise(r=>setTimeout(r, 1500)); }
+  }
+  status.textContent = ok ? "Your responses are saved. You can close this page." : "We could not save your responses. Please send the completion code above to the researcher.";
+  if(ok && CONFIG.REDIRECT_URL){
+    const u = CONFIG.REDIRECT_URL + (CONFIG.REDIRECT_URL.includes("?")?"&":"?") + `pid=${encodeURIComponent(S.pid)}&cond=${S.cond}&code=${S.code}`;
+    $("#next").innerHTML = `<a href="${esc(u)}"><button class="btn-go">Continue to the questionnaire</button></a>`;
+  }
+}
+
+function researcherPanel(sum, eventsCSV, summaryCSV){
+  const keys = ["condition","skins_mode","end_reason","game_duration_s","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
+  return `<div class="card">
+    <span class="eyebrow">Researcher view · demo only</span>
+    <h2>Recorded data for this session</h2>
+    <div class="scroll"><table><tbody>${keys.map(k=>`<tr><th>${k}</th><td class="num">${esc(sum[k])}</td></tr>`).join("")}</tbody></table></div>
+    <span class="eyebrow">Event log (${S.events.length} rows)</span>
+    <div class="scroll"><table><thead><tr><th>event</th><th class="num">t_ms</th><th class="num">spin_n</th><th class="num">balance</th><th>item</th><th class="num">value</th><th class="num">latency_ms</th></tr></thead>
+      <tbody>${S.events.map(e=>`<tr><td>${e.event}</td><td class="num">${e.t_ms}</td><td class="num">${e.spin_n}</td><td class="num">${e.balance}</td><td>${esc(e.item||e.tier||"")}</td><td class="num">${e.value??""}</td><td class="num">${e.latency_ms??""}</td></tr>`).join("")}</tbody></table></div>
+    <div class="row"><button id="copyEv">Copy event log CSV</button><button id="copySum">Copy summary CSV</button><button class="btn-ghost" id="again">Play again</button></div>
+    <textarea id="csvOut" readonly hidden></textarea>
+  </div>`;
+}
+function wireCopy(ev, sum){
+  const out=$("#csvOut");
+  const copy = async (txt, btn) => {
+    try{ await navigator.clipboard.writeText(txt); btn.textContent="Copied"; }
+    catch(e){ out.hidden=false; out.value=txt; out.select(); btn.textContent="Select the text below"; }
+  };
+  $("#copyEv").onclick = e => copy(ev, e.currentTarget);
+  $("#copySum").onclick = e => copy(sum, e.currentTarget);
+  $("#again").onclick = () => location.reload();
+}
+
+screenConsent();
+</script>
+
+</body></html>
