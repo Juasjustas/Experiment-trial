@@ -67,8 +67,6 @@
   .reel::after{right:0; background:linear-gradient(270deg,#0b0e14,transparent)}
   .cell{flex:0 0 var(--cw); height:var(--ch); border-radius:6px; background:linear-gradient(180deg,var(--panel-2) 30%, color-mix(in srgb, var(--t) 28%, var(--panel-2))); border-bottom:4px solid var(--t); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:6px}
   .cell svg.av{width:78px; height:78px}
-  .cell .coins{width:48px; height:48px}
-  .cell .amt{font:500 1.05rem var(--mono); color:var(--coin)}
   .cell .nm{font-size:.7rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
   .controls{display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:center}
   .withdraw{display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center}
@@ -76,7 +74,6 @@
   .reveal{display:grid; grid-template-columns:auto 1fr; gap:18px; align-items:center; min-height:120px}
   .reveal .big{width:110px; height:110px; border-radius:10px; display:grid; place-items:center; background:color-mix(in srgb, var(--t) 22%, var(--panel-2)); border:1px solid var(--t)}
   .reveal .big svg.av{width:96px; height:96px}
-  .reveal .big .coins{width:64px; height:64px}
   .tier{font:700 .75rem var(--display); letter-spacing:.14em; text-transform:uppercase; color:var(--t)}
   .reveal h2{font-size:1.5rem}
   .reveal .sub{color:var(--muted)}
@@ -84,7 +81,7 @@
   .excl b{font-family:var(--mono); color:var(--t)}
   .placeholder{color:var(--muted)}
   .drops{display:flex; gap:6px; flex-wrap:wrap}
-  .drop{width:46px; height:46px; border-radius:6px; background:var(--panel-2); border-bottom:3px solid var(--t); display:grid; place-items:center; font:500 .72rem var(--mono); color:var(--coin)}
+  .drop{width:46px; height:46px; border-radius:6px; background:var(--panel-2); border-bottom:3px solid var(--t); display:grid; place-items:center}
   .drop svg.av{width:38px; height:38px}
   .confirm{border:1px solid var(--warn); background:color-mix(in srgb, var(--warn) 10%, var(--panel))}
 
@@ -107,11 +104,24 @@
   .odd.owned{background:color-mix(in srgb, var(--t) 14%, transparent)}
   .odd .ic{width:36px; height:36px; border-radius:6px; background:var(--panel-2); border-bottom:2px solid var(--t); display:grid; place-items:center}
   .odd .ic svg.av{width:30px; height:30px}
-  .odd .ic .coins{width:22px; height:22px}
   .odd .nm{font-size:.84rem; font-weight:600; line-height:1.15}
   .odd .who{font-size:.72rem; color:var(--muted); line-height:1.2}
   .odd .pct{font:500 .9rem var(--mono); color:var(--t); text-align:right}
   .odd .one{display:block; font-size:.68rem; color:var(--muted); font-family:var(--body)}
+
+  /* questionnaire */
+  .q-list{display:flex; flex-direction:column; gap:12px}
+  .q{border:1px solid var(--line); border-radius:8px; padding:14px; margin:0; min-width:0}
+  .q.missing{border-color:var(--warn)}
+  .q legend{float:left; width:100%; padding:0; margin-bottom:10px; font-weight:500}
+  .q legend .num{color:var(--muted); margin-right:4px}
+  .q-opts{clear:both; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px}
+  .q-opts label{position:relative; display:flex; align-items:center; justify-content:center; text-align:center; min-height:44px; padding:8px 6px; border:1px solid var(--line); border-radius:6px; background:var(--panel-2); font-size:.88rem; line-height:1.2; cursor:pointer}
+  .q-opts label:hover{border-color:var(--muted)}
+  .q-opts input{position:absolute; opacity:0; pointer-events:none}
+  .q-opts label:has(input:checked){border-color:var(--go); background:color-mix(in srgb, var(--go) 16%, var(--panel-2))}
+  .q-opts label:has(input:focus-visible){outline:2px solid var(--coin); outline-offset:2px}
+  .q-err{color:var(--warn)}
 
   /* end */
   table{border-collapse:collapse; font-size:.85rem; width:100%}
@@ -132,6 +142,7 @@
     h1{font-size:1.55rem}
     .reveal{grid-template-columns:1fr; justify-items:start}
     .card{padding:18px}
+    .q-opts{grid-template-columns:repeat(2,minmax(0,1fr))}
   }
   @media (prefers-reduced-motion: reduce){ .strip{transition-duration:.6s !important} }
 </style>
@@ -155,25 +166,22 @@ const CONFIG = {
   SAME_SEQUENCE_FOR_ALL: true,
   SEED: 20260944,             // chosen so early outcomes are typical: no Legendary in the first 10 spins, ~96% return over 60
 
-  // Groups: "skins" (avatars with rarity info), "plain" (same avatars, no rarity info, one background colour),
-  // "currency" (coin prizes). Participants are split evenly across all three.
-  // Skin groups. "auto" = a skin's value is added to the balance straight away (balances match the currency group).
+  // Groups: "skins" (avatars with rarity info) and "plain" (same avatars, no rarity info, one background colour).
+  // Participants are split evenly across the two.
+  // "auto" = a skin's value is added to the balance straight away.
   // "sell" = won skins go to an inventory and the participant must sell them for coins.
   SKINS_MODE: "auto",
   PLAIN_COLOR: "#566078",     // the single background/border colour used for every item in the plain group
-
-  // Rarity panel ("X% of players got this"). Show it to the currency group too?
-  // true keeps the groups matched apart from the reward type; false shows it to the skins group only.
-  RARITY_PANEL_FOR_CURRENCY: true,
 
   // Show a "choose the game type" picker on the first screen (for testing and demos).
   // SET TO false FOR THE REAL STUDY so participants are assigned to groups automatically.
   SHOW_GROUP_PICKER: true,
 
   // Data saving. Leave DATAPIPE_ID empty to run in demo mode (data shown on screen, nothing sent).
-  // With an ID from pipe.jspsych.org, data is saved to your OSF project and groups are balanced.
+  // With an ID from pipe.jspsych.org, data is saved to your OSF project and groups are balanced
+  // (set "Number of conditions" to 2 in the DataPipe dashboard).
   DATAPIPE_ID: "tG82musgz2sa",
-  // Optional: send participants on to your questionnaire. pid, cond and code are appended.
+  // Optional: send participants on to another page after saving. pid, cond and code are appended.
   REDIRECT_URL: "",
 
   STUDY_TITLE: "Decision-making in a simple online game",
@@ -191,7 +199,7 @@ const TIERS = [
 ];
 
 // Every possible drop. p = chance per case in % (must sum to 100); it is also the
-// "% of players got this" figure. value = coins (the sell price, or the coin prize in the currency group).
+// "% of players got this" figure. value = coins the avatar is worth (its sell price).
 // Expected return per case = sum(p/100 * value) = 96.4 coins for a 100-coin case.
 const ITEMS = [
   {tier:"common",    p:22,   value:15,   name:"Pebble",           c1:"#9aa3ad", c2:"#d7dce1", ear:"bear",    eye:"dot"},
@@ -211,10 +219,32 @@ const ITEMS = [
   {tier:"legendary", p:0.15, value:4000, name:"Eclipse",          c1:"#2e2838", c2:"#ff6a5a", ear:"horn",    eye:"visor",  extra:"halo"},
 ];
 
+// Questionnaire shown after the game (PGSI, Lithuanian). Answers are scored 0-3 in option order.
+const PGSI = {
+  title: "Per pastaruosius 12 mėnesių:",
+  intro: [
+    "Kiekvienam klausimui pasirinkite tinkamiausią atsakymo variantą.",
+    "Svarbu: visi teiginiai suformuluoti apie lošimus, tačiau pildydamas(-a) atsakymus į šį anketos klausimą, galvokite tiek apie lošimus, tiek apie loterijas.",
+  ],
+  options: ["Niekada", "Kartais", "Dažnai", "Beveik visada"],
+  items: [
+    "Ar Jūs lošėte iš didesnės sumos nei iš tikrųjų galėjote sau leisti prarasti?",
+    "Ar Jums reikėjo lošti su vis didesnėmis pinigų sumomis, kad patirtumėte pasitenkinimo jausmą?",
+    "Ar grįžote kitą dieną po lošimo ir bandėte susigrąžinti prarastus pinigus?",
+    "Ar Jums reikėjo skolintis ar ką nors parduoti kad gautumėte pinigų lošimui?",
+    "Ar jautėte, kad galbūt turėsite problemų dėl lošimo?",
+    "Ar lošimas sukėlė Jums kokių nors sveikatos problemų, įskaitant stresą ar nerimą?",
+    "Ar žmonės kritikavo jūsų lošimo veiklą arba sakė, kad turite problemų dėl lošimo, nepaisant jūsų pritarimo ar nepritarimo?",
+    "Ar Jūsų lošimas sukėlė kokių nors finansinių problemų jums ar jūsų namų ūkiui?",
+    "Ar jautėtės kaltas dėl to, kaip lošiate arba kas nutinka lošiant?",
+  ],
+};
+
 /* ===================================================================== */
 
 const DEMO = !CONFIG.DATAPIPE_ID;
 const PICKER = DEMO || CONFIG.SHOW_GROUP_PICKER;
+const CONDS = ["skins","plain"];
 const STRIP_LEN = 60, WIN_INDEX = 48, SPIN_MS = 4800;
 const $ = (s, el=document) => el.querySelector(s);
 const app = $("#app");
@@ -247,14 +277,11 @@ function avatarSVG(s){
   if(s.extra==="spark") extra=`<path d="M14 22 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3Z M86 70 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2Z M84 18 l1.5 4 4 1.5 -4 1.5 -1.5 4 -1.5 -4 -4 -1.5 4 -1.5Z" fill="#fff6c9"/>`;
   return `<svg class="av" viewBox="0 0 100 100" aria-hidden="true">${ears}<ellipse cx="50" cy="60" rx="34" ry="32" fill="${s.c1}"/><ellipse cx="50" cy="72" rx="20" ry="14" fill="${s.c2}" opacity=".9"/>${mask}${eyes}<path d="M45 72 Q50 76 55 72" stroke="${ink}" stroke-width="2.5" fill="none" stroke-linecap="round"/>${extra}</svg>`;
 }
-const coinSVG = cls => `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="32" cy="46" rx="22" ry="8" fill="#a8801e"/><rect x="10" y="38" width="44" height="8" fill="#a8801e"/><ellipse cx="32" cy="38" rx="22" ry="8" fill="#e8c15a"/><ellipse cx="32" cy="32" rx="22" ry="8" fill="#a8801e"/><rect x="10" y="24" width="44" height="8" fill="#a8801e"/><ellipse cx="32" cy="24" rx="22" ry="8" fill="#f2d27a"/><ellipse cx="32" cy="24" rx="12" ry="4" fill="none" stroke="#a8801e" stroke-width="2"/></svg>`;
+const coinSVG = () => `<svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="32" cy="46" rx="22" ry="8" fill="#a8801e"/><rect x="10" y="38" width="44" height="8" fill="#a8801e"/><ellipse cx="32" cy="38" rx="22" ry="8" fill="#e8c15a"/><ellipse cx="32" cy="32" rx="22" ry="8" fill="#a8801e"/><rect x="10" y="24" width="44" height="8" fill="#a8801e"/><ellipse cx="32" cy="24" rx="22" ry="8" fill="#f2d27a"/><ellipse cx="32" cy="24" rx="12" ry="4" fill="none" stroke="#a8801e" stroke-width="2"/></svg>`;
 
 function itemFor(idx){const it=ITEMS[idx];return {...it, idx, tierObj:tierById(it.tier)}}
 function cellHTML(it){
-  const inner = skinCond()
-    ? `${avatarSVG(it)}<span class="nm">${esc(it.name)}</span>`
-    : `${coinSVG("coins")}<span class="amt">+${fmt(it.value)}</span>`;
-  return `<div class="cell" style="--t:${colorOf(it)}">${inner}</div>`;
+  return `<div class="cell" style="--t:${colorOf(it)}">${avatarSVG(it)}<span class="nm">${esc(it.name)}</span></div>`;
 }
 
 /* ---------- pre-generated outcomes (identical across groups) ---------- */
@@ -276,11 +303,11 @@ const S = {
   spinning:false, ended:false, t0:null, lastReveal:null, outAt:null,
   hiddenMs:0, hiddenAt:null, firstWithdrawSpin:null, latencies:[], drops:[],
   events:[], startedAt:null, endReason:null, code:makeCode(), pendingEnd:null,
+  gameMs:null, endedAt:null, pgsi:null, pgsiMs:null,
 };
-const skinCond = () => S.cond!=="currency";
-const rarityShown = () => S.cond==="skins" || (S.cond==="currency" && CONFIG.RARITY_PANEL_FOR_CURRENCY);
+const rarityShown = () => S.cond==="skins";
 const colorOf = it => S.cond==="plain" ? CONFIG.PLAIN_COLOR : it.tierObj.color;
-const sellMode = () => skinCond() && CONFIG.SKINS_MODE==="sell";
+const sellMode = () => CONFIG.SKINS_MODE==="sell";
 const now = () => Math.round(performance.now() - S.t0);
 const invValue = () => S.inventory.reduce((s,x)=>s+ITEMS[x.idx].value,0);
 function log(type, extra={}){ S.events.push({pid:S.pid, condition:S.cond, event:type, t_ms:now(), clock:new Date().toISOString(), spin_n:S.spins, balance:S.balance, inventory_n:S.inventory.length, inventory_value:invValue(), ...extra}); }
@@ -299,7 +326,7 @@ function screenConsent(){
     ${PICKER ? `<div class="card picker">
       <span class="eyebrow">Testing · choose the game type</span>
       <div class="picker-opts" role="group" aria-label="Game type">
-        ${[["random","Random","Assigned automatically"],["skins","Skins","Avatars with rarity"],["plain","Plain skins","Avatars, no rarity"],["currency","Coins","Coin prizes"]].map(([v,l,d]) =>
+        ${[["random","Random","Assigned automatically"],["skins","Skins","Avatars with rarity"],["plain","Plain skins","Avatars, no rarity"]].map(([v,l,d]) =>
           `<button type="button" data-cond="${v}" aria-pressed="${v==="random"}">${l}<small>${d}</small></button>`).join("")}
       </div></div>` : ""}
     <div class="card">
@@ -334,22 +361,21 @@ function screenConsent(){
 async function assignCondition(demoChoice){
   const fromUrl = P.get("cond");
   if(demoChoice && demoChoice!=="random") return demoChoice;
-  if(["skins","plain","currency"].includes(fromUrl)) return fromUrl;
+  if(CONDS.includes(fromUrl)) return fromUrl;
   if(!DEMO){
     try{
       const r = await fetch("https://pipe.jspsych.org/api/condition/", {method:"POST", headers:{"Content-Type":"application/json", Accept:"*/*"}, body:JSON.stringify({experimentID:CONFIG.DATAPIPE_ID})});
       const j = await r.json();
-      if(typeof j.condition === "number") return ["skins","plain","currency"][j.condition % 3];
+      if(typeof j.condition === "number") return CONDS[j.condition % CONDS.length];
     }catch(e){}
   }
-  return ["skins","plain","currency"][Math.floor(Math.random()*3)];
+  return CONDS[Math.floor(Math.random()*CONDS.length)];
 }
 
 function screenInstructions(){
-  const skins = skinCond(), plain = S.cond==="plain";
+  const plain = S.cond==="plain";
   const rarer = plain ? "" : " Rarer ones are worth more.";
-  const rule = !skins ? "Each case contains a coin prize that is added to your balance." + rarer
-    : sellMode() ? "Each case contains an avatar that goes into your inventory. You can sell any avatar for coins." + rarer
+  const rule = sellMode() ? "Each case contains an avatar that goes into your inventory. You can sell any avatar for coins." + rarer
     : "Each case contains an avatar. Its value in coins is added to your balance." + rarer;
   app.innerHTML = `
     <div class="card">
@@ -377,7 +403,7 @@ function startGame(){
     <div class="${panel ? "layout" : "main"}">
       <div class="main">
         <div class="topbar">
-          <div class="balance">${coinSVG("coins").replace('class="coins"','width="28" height="28"')}<span class="num" id="bal"></span><small>coins</small></div>
+          <div class="balance">${coinSVG()}<span class="num" id="bal"></span><small>coins</small></div>
           <button class="btn-ghost" id="stop">Stop playing</button>
         </div>
         <div class="reel"><div class="marker"></div><div class="strip" id="strip"></div></div>
@@ -402,28 +428,17 @@ function renderBalance(){ $("#bal").textContent = fmt(S.balance); }
 
 function renderOdds(){
   const el = $("#odds"); if(!el) return;
-  const skins = S.cond==="skins";
   const groups = TIERS.map(t => {
     const items = ITEMS.map((it,i)=>({...it, i})).filter(it => it.tier===t.id);
-    if(skins){
-      const rows = items.map(it => `
-        <div class="odd ${S.obtained.has(it.i)?"owned":""}" style="--t:${t.color}">
-          <div class="ic">${avatarSVG(it)}</div>
-          <div><div class="nm">${esc(it.name)}${S.obtained.has(it.i) ? ` <span class="who">· unboxed</span>` : ""}</div><div class="who">${pctText(it.p)} of players got this</div></div>
-          <div class="pct">${pctText(it.p)}<span class="one">${oneIn(it.p)}</span></div>
-        </div>`).join("");
-      return `<div class="tier-group"><span class="tier" style="--t:${t.color}">${t.label}</span>${rows}</div>`;
-    }
-    const p = items.reduce((s,x)=>s+x.p,0);
-    const vals = items.map(x=>x.value);
-    const owned = items.some(x=>S.obtained.has(x.i));
-    return `<div class="tier-group"><div class="odd ${owned?"owned":""}" style="--t:${t.color}">
-        <div class="ic">${coinSVG("coins")}</div>
-        <div><div class="nm">${t.label} prize</div><div class="who"><span class="num">${fmt(Math.min(...vals))}–${fmt(Math.max(...vals))}</span> coins · ${pctText(p)} of players got this</div></div>
-        <div class="pct">${pctText(p)}<span class="one">${oneIn(p)}</span></div>
-      </div></div>`;
+    const rows = items.map(it => `
+      <div class="odd ${S.obtained.has(it.i)?"owned":""}" style="--t:${t.color}">
+        <div class="ic">${avatarSVG(it)}</div>
+        <div><div class="nm">${esc(it.name)}${S.obtained.has(it.i) ? ` <span class="who">· unboxed</span>` : ""}</div><div class="who">${pctText(it.p)} of players got this</div></div>
+        <div class="pct">${pctText(it.p)}<span class="one">${oneIn(it.p)}</span></div>
+      </div>`).join("");
+    return `<div class="tier-group"><span class="tier" style="--t:${t.color}">${t.label}</span>${rows}</div>`;
   }).join("");
-  el.innerHTML = `<span class="eyebrow">Drop rates</span><h3>${skins ? "How rare is each avatar?" : "How rare is each prize?"}</h3><div class="odds">${groups}</div>`;
+  el.innerHTML = `<span class="eyebrow">Drop rates</span><h3>How rare is each avatar?</h3><div class="odds">${groups}</div>`;
 }
 
 function renderControls(){
@@ -461,22 +476,20 @@ function renderStrip(cells, animate){
 function renderReveal(it){
   const r = $("#reveal");
   if(!it){ r.innerHTML = `<p class="placeholder">Open a case to see what you get.</p>`; return; }
-  const skins = skinCond(), plain = S.cond==="plain";
+  const plain = S.cond==="plain";
   const c = colorOf(it);
-  const sub = !skins ? "Added to your balance"
-    : sellMode() ? `Worth <span class="num">${fmt(it.value)}</span> coins · added to your inventory`
+  const sub = sellMode() ? `Worth <span class="num">${fmt(it.value)}</span> coins · added to your inventory`
     : `Worth <span class="num">${fmt(it.value)}</span> coins · added to your balance`;
   const exclusive = rarityShown();
   r.innerHTML = `<div class="reveal" style="--t:${c}">
-    <div class="big">${skins ? avatarSVG(it) : coinSVG("coins")}</div>
+    <div class="big">${avatarSVG(it)}</div>
     <div class="stack" style="gap:6px">
       ${plain ? "" : `<span class="tier">${it.tierObj.label}</span>`}
-      <h2>${skins ? esc(it.name) : `+${fmt(it.value)} coins`}</h2>
-      ${exclusive ? `<span class="excl">Only <b>${pctText(skins ? it.p : tierP(it.tier))}</b> of players got this</span>` : ""}
+      <h2>${esc(it.name)}</h2>
+      ${exclusive ? `<span class="excl">Only <b>${pctText(it.p)}</b> of players got this</span>` : ""}
       <span class="sub">${sub}</span>
     </div></div>`;
 }
-const tierP = id => ITEMS.filter(x=>x.tier===id).reduce((s,x)=>s+x.p,0);
 
 function renderInventory(){
   const el = $("#invCard"); if(!el) return;
@@ -497,7 +510,7 @@ function renderInventory(){
 function renderDrops(){
   const d=$("#drops");
   d.innerHTML = S.drops.slice(-14).reverse().map(it =>
-    `<div class="drop" style="--t:${colorOf(it)}" title="${esc(skinCond()?it.name:it.tierObj.label)}">${skinCond() ? avatarSVG(it) : "+"+fmt(it.value)}</div>`).join("");
+    `<div class="drop" style="--t:${colorOf(it)}" title="${esc(it.name)}">${avatarSVG(it)}</div>`).join("");
 }
 
 function spin(){
@@ -530,7 +543,7 @@ function finishSpin(plan){
   else { credited = it.value; S.balance += credited; S.won += credited; }
   S.obtained.add(it.idx);
   S.drops.push(it);
-  log("spin_result", {tier:it.tier, item:skinCond()?it.name:"coins", item_p:it.p, value:it.value, credited});
+  log("spin_result", {tier:it.tier, item:it.name, item_p:it.p, value:it.value, credited});
   S.spinning = false; S.lastReveal = performance.now();
   renderBalance(); renderReveal(it); renderDrops(); renderInventory(); renderOdds(); renderControls(); $("#stop").disabled = false;
   if(S.pendingEnd) return endGame(S.pendingEnd);
@@ -572,17 +585,20 @@ function summary(){
   const lat = S.latencies.slice(1);
   const mean = lat.length ? Math.round(lat.reduce((a,b)=>a+b,0)/lat.length) : "";
   return {
-    pid:S.pid, condition:S.cond, condition_source:S.condSource, skins_mode:CONFIG.SKINS_MODE, rarity_panel_currency:CONFIG.RARITY_PANEL_FOR_CURRENCY,
+    pid:S.pid, condition:S.cond, condition_source:S.condSource, skins_mode:CONFIG.SKINS_MODE,
     seed:S.seed, same_sequence:CONFIG.SAME_SEQUENCE_FOR_ALL,
-    started_at:S.startedAt, ended_at:new Date().toISOString(), end_reason:S.endReason,
-    game_duration_s:(now()/1000).toFixed(1), time_tab_hidden_s:(S.hiddenMs/1000).toFixed(1),
+    started_at:S.startedAt, ended_at:S.endedAt, end_reason:S.endReason,
+    game_duration_s:(S.gameMs/1000).toFixed(1), time_tab_hidden_s:(S.hiddenMs/1000).toFixed(1),
     n_spins:S.spins, n_withdrawals:S.withdrawals, total_withdrawn:S.withdrawn,
     spins_after_first_withdrawal: S.firstWithdrawSpin===null ? 0 : S.spins - S.firstWithdrawSpin,
     n_sold:S.sold, coins_from_sales:S.soldValue, items_kept:S.inventory.length, value_kept:invValue(),
     total_spent:S.spent, coins_received:S.won, final_balance:S.balance,
     net_result:S.balance + invValue() - CONFIG.START_BALANCE - S.withdrawn,
     mean_post_outcome_pause_ms:mean, start_balance:CONFIG.START_BALANCE, spin_cost:CONFIG.SPIN_COST,
-    withdraw_amount:CONFIG.WITHDRAW_AMOUNT, completion_code:S.code,
+    withdraw_amount:CONFIG.WITHDRAW_AMOUNT,
+    ...Object.fromEntries(S.pgsi.map((v,i)=>[`pgsi_${i+1}`, v])),
+    pgsi_total:S.pgsi.reduce((a,b)=>a+b,0), questionnaire_duration_s:(S.pgsiMs/1000).toFixed(1),
+    completed_at:new Date().toISOString(), completion_code:S.code,
   };
 }
 function toCSV(rows){
@@ -599,20 +615,76 @@ async function saveFile(filename, data){
   }
 }
 
-async function endGame(reason){
+function endGame(reason){
   if(S.ended) return;
   if(S.hiddenAt){ S.hiddenMs += performance.now()-S.hiddenAt; S.hiddenAt=null; }
   S.endReason = reason; log("game_end", {reason});
   S.ended = true; clearInterval(S.timer);
-  const sum = summary();
-  const eventsCSV = toCSV(S.events), summaryCSV = toCSV([sum]);
+  S.gameMs = now(); S.endedAt = new Date().toISOString();
+  screenQuestionnaire();
+}
 
-  const reasonText = reason==="time_limit" ? "The time for this game is up." : reason==="max_spins" ? "You have reached the maximum number of cases." : "You finished the game.";
+function screenQuestionnaire(){
+  const r = S.endReason;
+  const reasonText = r==="time_limit" ? "The time for this game is up." : r==="max_spins" ? "You have reached the maximum number of cases." : "You finished the game.";
+  const shownAt = performance.now();
   app.className = "wrap";
   app.innerHTML = `
     <div class="card">
-      <span class="eyebrow">Thank you</span>
+      <span class="eyebrow">Game over</span>
       <h1>${reasonText}</h1>
+      <p>Please answer the short questionnaire below to finish the study.</p>
+    </div>
+    <form class="card" id="pgsi" novalidate>
+      <div class="stack" lang="lt">
+        <span class="eyebrow">Klausimynas</span>
+        <h2>${esc(PGSI.title)}</h2>
+        ${PGSI.intro.map(t => `<p>${esc(t)}</p>`).join("")}
+      </div>
+      <div class="q-list" lang="lt">
+        ${PGSI.items.map((q,i) => `
+        <fieldset class="q" id="q${i+1}">
+          <legend><span class="num">${i+1}.</span>${esc(q)}</legend>
+          <div class="q-opts">${PGSI.options.map((o,v) => `<label><input type="radio" name="pgsi_${i+1}" value="${v}"><span>${esc(o)}</span></label>`).join("")}</div>
+        </fieldset>`).join("")}
+      </div>
+      <p class="q-err" id="qErr" role="alert" hidden></p>
+      <div class="row"><button class="btn-go" type="submit">Continue</button></div>
+    </form>`;
+  window.scrollTo(0, 0);
+  const form = $("#pgsi"), err = $("#qErr");
+  form.onchange = e => {
+    const f = e.target.closest(".q"); if(f) f.classList.remove("missing");
+    const left = form.querySelectorAll(".q.missing").length;
+    err.hidden = !left; err.textContent = `Please answer every question (${left} left).`;
+  };
+  form.onsubmit = e => {
+    e.preventDefault();
+    const ans = PGSI.items.map((_,i) => { const c = $(`input[name="pgsi_${i+1}"]:checked`, form); return c ? +c.value : null; });
+    const missing = ans.flatMap((v,i) => v===null ? [i] : []);
+    form.querySelectorAll(".q").forEach((f,i) => f.classList.toggle("missing", missing.includes(i)));
+    if(missing.length){
+      err.hidden = false;
+      err.textContent = `Please answer every question (${missing.length} left).`;
+      $("#q"+(missing[0]+1)).scrollIntoView({behavior:"smooth", block:"center"});
+      return;
+    }
+    S.pgsi = ans; S.pgsiMs = Math.round(performance.now() - shownAt);
+    log("questionnaire_submit", {pgsi_total:ans.reduce((a,b)=>a+b,0), questionnaire_ms:S.pgsiMs});
+    finishStudy();
+  };
+}
+
+async function finishStudy(){
+  const sum = summary();
+  const eventsCSV = toCSV(S.events), summaryCSV = toCSV([sum]);
+
+  app.className = "wrap";
+  window.scrollTo(0, 0);
+  app.innerHTML = `
+    <div class="card">
+      <span class="eyebrow">Thank you</span>
+      <h1>Thank you for taking part.</h1>
       <p id="status">${DEMO ? "Demo mode: nothing was sent." : "Saving your responses. Please keep this page open…"}</p>
       <div class="stack" style="gap:4px"><span class="eyebrow">Completion code</span><span class="code">${S.code}</span></div>
       <div id="next"></div>
@@ -620,7 +692,7 @@ async function endGame(reason){
     <div class="card">
       <span class="eyebrow">About this study</span>
       <h2>What the game was really testing</h2>
-      <p>You were in one of three groups. Two groups won collectible avatars (one saw how rare each avatar was, the other did not), and one group won coin prizes. The chances of each outcome were exactly the same in all groups. We want to know whether the kind of reward changes how long people keep playing and how often they add more coins.</p>
+      <p>You were in one of two groups. Both groups won the same collectible avatars, but only one group saw how rare each avatar was. The chances of each outcome were exactly the same in both groups. We want to know whether showing how rare a reward is changes how long people keep playing and how often they add more coins.</p>
       ${rarityShown() ? `<p>The "% of players got this" figures were not counts of real players. They were the fixed chances of each outcome, set by the researcher to make rare items feel exclusive.</p>` : ""}
       <p>The game was set so that, on average, each case returned less than it cost (about 96 coins back per 100 spent), like real gambling products. Over time the player always loses. Nothing you won or lost was real.</p>
       <p>${esc(CONFIG.HELP_TEXT)}</p>
@@ -643,12 +715,12 @@ async function endGame(reason){
   if(!ok) status.insertAdjacentHTML("afterend", `<p class="placeholder" style="font-size:.8rem">Error details for the researcher: <span class="num">${esc(lastErr || "no response (network blocked or offline)")}</span></p>`);
   if(ok && CONFIG.REDIRECT_URL){
     const u = CONFIG.REDIRECT_URL + (CONFIG.REDIRECT_URL.includes("?")?"&":"?") + `pid=${encodeURIComponent(S.pid)}&cond=${S.cond}&code=${S.code}`;
-    $("#next").innerHTML = `<a href="${esc(u)}"><button class="btn-go">Continue to the questionnaire</button></a>`;
+    $("#next").innerHTML = `<a href="${esc(u)}"><button class="btn-go">Continue</button></a>`;
   }
 }
 
 function researcherPanel(sum, eventsCSV, summaryCSV){
-  const keys = ["condition","skins_mode","end_reason","game_duration_s","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
+  const keys = ["condition","skins_mode","end_reason","game_duration_s","pgsi_total","questionnaire_duration_s","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
   return `<div class="card">
     <span class="eyebrow">Researcher view · demo only</span>
     <h2>Recorded data for this session</h2>
