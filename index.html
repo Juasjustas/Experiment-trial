@@ -123,6 +123,16 @@
   .q-opts label:has(input:focus-visible){outline:2px solid var(--coin); outline-offset:2px}
   .q-err{color:var(--warn)}
 
+  /* SAM: 5 figures with a point under each figure and between each pair (9 points) */
+  .sam{clear:both; display:grid; grid-template-columns:repeat(4, minmax(0,1fr) minmax(0,.5fr)) minmax(0,1fr); row-gap:6px; align-items:end}
+  .sam .fig{grid-row:1; display:flex; justify-content:center; padding:4px; border-radius:6px; border:1px solid transparent; cursor:pointer; color:var(--text)}
+  .sam .fig svg{width:100%; max-width:72px; height:auto}
+  .sam .fig.on{border-color:var(--go); background:color-mix(in srgb, var(--go) 12%, transparent)}
+  .sam .pt{grid-row:2; display:flex; justify-content:center; cursor:pointer; padding:6px 0}
+  .sam .pt input{width:20px; height:20px; margin:0; accent-color:var(--go); cursor:pointer}
+  .sam-ends{display:flex; justify-content:space-between; gap:12px; margin-top:6px; font-size:.8rem; color:var(--muted)}
+  .sam-ends span:last-child{text-align:right}
+
   /* end */
   table{border-collapse:collapse; font-size:.85rem; width:100%}
   th,td{text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); white-space:nowrap}
@@ -219,6 +229,18 @@ const ITEMS = [
   {tier:"legendary", p:0.15, value:4000, name:"Užtemimas",        c1:"#2e2838", c2:"#ff6a5a", ear:"horn",    eye:"visor",  extra:"halo"},
 ];
 
+// Self-Assessment Manikin (Bradley & Lang, 1994), shown before and right after the game.
+// Figures appear in the published order (left to right). `scores` gives the 1-9 value of each of the
+// 9 points from left to right, so 9 always means more pleasure / more arousal / more control.
+const SAM = {
+  intro: "Kiekvienoje eilutėje pasirinkite paveikslėlį arba tašką tarp dviejų paveikslėlių, kuris geriausiai atspindi, kaip jaučiatės šiuo metu.",
+  scales: [
+    {id:"valence",   title:"Malonumas",      left:"Laimingas(-a), patenkintas(-a), viltingas(-a)",  right:"Nelaimingas(-a), susierzinęs(-usi), nusivylęs(-usi)", scores:[9,8,7,6,5,4,3,2,1]},
+    {id:"arousal",   title:"Susijaudinimas", left:"Susijaudinęs(-usi), budrus(-i), įsitempęs(-usi)", right:"Ramus(-i), atsipalaidavęs(-usi), mieguistas(-a)",    scores:[9,8,7,6,5,4,3,2,1]},
+    {id:"dominance", title:"Kontrolė",       left:"Kontroliuojamas(-a), priklausomas(-a)",           right:"Kontroliuojantis(-i), valdantis(-i) situaciją",       scores:[1,2,3,4,5,6,7,8,9]},
+  ],
+};
+
 // Questionnaire shown after the game (PGSI, Lithuanian). Answers are scored 0-3 in option order.
 const PGSI = {
   title: "Per pastaruosius 12 mėnesių:",
@@ -282,6 +304,37 @@ function avatarSVG(s){
 }
 const coinSVG = () => `<svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="32" cy="46" rx="22" ry="8" fill="#a8801e"/><rect x="10" y="38" width="44" height="8" fill="#a8801e"/><ellipse cx="32" cy="38" rx="22" ry="8" fill="#e8c15a"/><ellipse cx="32" cy="32" rx="22" ry="8" fill="#a8801e"/><rect x="10" y="24" width="44" height="8" fill="#a8801e"/><ellipse cx="32" cy="24" rx="22" ry="8" fill="#f2d27a"/><ellipse cx="32" cy="24" rx="12" ry="4" fill="none" stroke="#a8801e" stroke-width="2"/></svg>`;
 
+// SAM manikin: k = 0..4 is the figure's position in its row (left to right).
+function samSVG(scale, k){
+  const body = `<path d="M16 28 H44 V32 H54 V48 H48 V38 H44 V54 H42 V76 H33 V58 H27 V76 H18 V54 H16 V38 H12 V48 H6 V32 H16 Z" fill="var(--panel-2)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+    <rect x="19" y="6" width="22" height="20" rx="1.5" fill="var(--panel-2)" stroke="currentColor" stroke-width="1.6"/>
+    <path d="M19 10 H41" stroke="currentColor" stroke-width="1.6"/>`;
+  const eyesOpen = `<rect x="23.5" y="13" width="4" height="3.5" fill="currentColor"/><rect x="32.5" y="13" width="4" height="3.5" fill="currentColor"/>`;
+  let face = eyesOpen, extra = "";
+  if(scale==="valence"){
+    const d = [5,2.5,0,-2.5,-5][k];
+    face += `<path d="M24 ${21-d/2} Q30 ${21+d} 36 ${21-d/2}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`;
+  } else {
+    face += `<path d="M25.5 21.5 H34.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`;
+  }
+  if(scale==="arousal"){
+    const eyes = [
+      `<circle cx="25.5" cy="14.5" r="2.8" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="34.5" cy="14.5" r="2.8" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="25.5" cy="14.5" r="1.1" fill="currentColor"/><circle cx="34.5" cy="14.5" r="1.1" fill="currentColor"/>`,
+      eyesOpen, eyesOpen,
+      `<rect x="23.5" y="14.5" width="4" height="2" fill="currentColor"/><rect x="32.5" y="14.5" width="4" height="2" fill="currentColor"/>`,
+      `<path d="M23.5 15.5 H27.5 M32.5 15.5 H36.5" stroke="currentColor" stroke-width="1.4"/>`,
+    ][k];
+    face = face.replace(eyesOpen, eyes);
+    const r = [12,9,6,3.5,1.3][k], pts = [];
+    for(let i=0;i<16;i++){ const a = i*Math.PI/8, rr = i%2 ? r*.45 : r; pts.push((30+rr*Math.cos(a)).toFixed(1)+","+(41+rr*Math.sin(a)).toFixed(1)); }
+    extra = k===4 ? `<circle cx="30" cy="41" r="1.3" fill="currentColor"/>` : `<polygon points="${pts.join(" ")}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>`;
+    if(k===0) extra += `<path d="M2 20 Q0 26 2 32 M58 20 Q60 26 58 32 M4 54 Q2 60 4 66 M56 54 Q58 60 56 66" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`;
+  }
+  let fig = body + face + extra;
+  if(scale==="dominance"){ const f = [.4,.55,.7,.85,1][k]; fig = `<g transform="translate(${30-30*f} ${78-78*f}) scale(${f})">${fig}</g>`; }
+  return `<svg viewBox="0 0 60 80" aria-hidden="true">${fig}</svg>`;
+}
+
 function itemFor(idx){const it=ITEMS[idx];return {...it, idx, tierObj:tierById(it.tier)}}
 function cellHTML(it){
   return `<div class="cell" style="--t:${colorOf(it)}">${avatarSVG(it)}<span class="nm">${esc(it.name)}</span></div>`;
@@ -306,7 +359,7 @@ const S = {
   spinning:false, ended:false, t0:null, lastReveal:null, outAt:null,
   hiddenMs:0, hiddenAt:null, firstWithdrawSpin:null, latencies:[], drops:[],
   events:[], startedAt:null, endReason:null, code:makeCode(), pendingEnd:null,
-  gameMs:null, endedAt:null, pgsi:null, pgsiMs:null,
+  gameMs:null, endedAt:null, pgsi:null, pgsiMs:null, sam:{pre:null, post:null}, samMs:{pre:null, post:null},
 };
 const rarityShown = () => S.cond==="skins";
 const colorOf = it => S.cond==="plain" ? CONFIG.PLAIN_COLOR : it.tierObj.color;
@@ -339,7 +392,7 @@ function screenConsent(){
       <ul>
         <li>Monetos ir avatarai nėra tikri ir neturi jokios piniginės vertės. Tikri pinigai nenaudojami.</li>
         <li>Žaisti galite nustoti kada panorėję, o iš tyrimo pasitraukti galite bet kuriuo metu, nenurodydami priežasties.</li>
-        <li>Registruojame Jūsų pasirinkimus žaidime, kiek laiko jie užtrunka, ir atsakymus į klausimyną apie lošimą. Vardai ir kontaktiniai duomenys nerenkami.</li>
+        <li>Registruojame Jūsų pasirinkimus žaidime, kiek laiko jie užtrunka, savijautos įvertinimus prieš žaidimą ir po jo bei atsakymus į klausimyną apie lošimą. Vardai ir kontaktiniai duomenys nerenkami.</li>
         <li>Dalyvauti gali tik 18 metų ir vyresni asmenys.</li>
       </ul>
       <p>Klausimai: <span class="num">${esc(CONFIG.CONTACT)}</span></p>
@@ -357,7 +410,7 @@ function screenConsent(){
     go.disabled = true; go.textContent = "Kraunama…";
     S.condSource = PICKER && picked!=="random" ? "picker" : "assigned";
     S.cond = await assignCondition(PICKER ? picked : null);
-    screenInstructions();
+    screenSAM("pre", screenInstructions);
   };
 }
 
@@ -373,6 +426,67 @@ async function assignCondition(demoChoice){
     }catch(e){}
   }
   return CONDS[Math.floor(Math.random()*CONDS.length)];
+}
+
+function screenSAM(phase, next){
+  const shownAt = performance.now();
+  const r = S.endReason;
+  const reasonText = r==="time_limit" ? "Žaidimo laikas baigėsi." : r==="max_spins" ? "Pasiekėte didžiausią leistiną dėžių skaičių." : "Žaidimą baigėte.";
+  app.className = "wrap";
+  app.innerHTML = `
+    ${phase==="post" ? `<div class="card">
+      <span class="eyebrow">Žaidimas baigtas</span>
+      <h1>${reasonText}</h1>
+      <p>Kad užbaigtumėte tyrimą, atsakykite į du trumpus klausimynus.</p>
+    </div>` : ""}
+    <form class="card" id="sam" novalidate>
+      <div class="stack">
+        <span class="eyebrow">${phase==="pre" ? "Prieš žaidimą" : "Po žaidimo"}</span>
+        <h2>Kaip jaučiatės šiuo metu?</h2>
+        <p>${esc(SAM.intro)}</p>
+      </div>
+      <div class="q-list">
+        ${SAM.scales.map((sc,i) => `
+        <fieldset class="q" id="s${i+1}">
+          <legend><span class="num">${i+1}.</span>${esc(sc.title)}</legend>
+          <div class="sam">
+            ${[0,1,2,3,4].map(k => `<div class="fig" data-pos="${2*k}" style="grid-column:${2*k+1}">${samSVG(sc.id, k)}</div>`).join("")}
+            ${sc.scores.map((v,pos) => `<label class="pt" style="grid-column:${pos+1}"><input type="radio" name="sam_${sc.id}" value="${v}" data-pos="${pos}" aria-label="${pos+1} iš 9"></label>`).join("")}
+          </div>
+          <div class="sam-ends"><span>${esc(sc.left)}</span><span>${esc(sc.right)}</span></div>
+        </fieldset>`).join("")}
+      </div>
+      <p class="q-err" id="sErr" role="alert" hidden></p>
+      <div class="row"><button class="btn-go" type="submit">Tęsti</button></div>
+    </form>`;
+  window.scrollTo(0, 0);
+  const form = $("#sam"), err = $("#sErr");
+  const mark = f => f.querySelectorAll(".fig").forEach(g => { const c = $("input:checked", f); g.classList.toggle("on", !!c && c.dataset.pos===g.dataset.pos); });
+  form.querySelectorAll(".fig").forEach(g => g.onclick = () => {
+    const f = g.closest(".q"); $(`input[data-pos="${g.dataset.pos}"]`, f).click();
+  });
+  form.onchange = e => {
+    const f = e.target.closest(".q"); if(!f) return;
+    f.classList.remove("missing"); mark(f);
+    const left = form.querySelectorAll(".q.missing").length;
+    err.hidden = !left; err.textContent = `Atsakykite į visus klausimus (liko neatsakytų: ${left}).`;
+  };
+  form.onsubmit = e => {
+    e.preventDefault();
+    const ans = SAM.scales.map(sc => { const c = $(`input[name="sam_${sc.id}"]:checked`, form); return c ? +c.value : null; });
+    const missing = ans.flatMap((v,i) => v===null ? [i] : []);
+    form.querySelectorAll(".q").forEach((f,i) => f.classList.toggle("missing", missing.includes(i)));
+    if(missing.length){
+      err.hidden = false;
+      err.textContent = `Atsakykite į visus klausimus (liko neatsakytų: ${missing.length}).`;
+      $("#s"+(missing[0]+1)).scrollIntoView({behavior:"smooth", block:"center"});
+      return;
+    }
+    S.sam[phase] = Object.fromEntries(SAM.scales.map((sc,i) => [sc.id, ans[i]]));
+    S.samMs[phase] = Math.round(performance.now() - shownAt);
+    if(S.t0) log("sam_submit", {phase, ...S.sam[phase]});
+    next();
+  };
 }
 
 function screenInstructions(){
@@ -601,6 +715,7 @@ function summary(){
     withdraw_amount:CONFIG.WITHDRAW_AMOUNT,
     ...Object.fromEntries(S.pgsi.map((v,i)=>[`pgsi_${i+1}`, v])),
     pgsi_total:S.pgsi.reduce((a,b)=>a+b,0), questionnaire_duration_s:(S.pgsiMs/1000).toFixed(1),
+    ...Object.fromEntries(["pre","post"].flatMap(ph => [...SAM.scales.map(sc => [`sam_${ph}_${sc.id}`, S.sam[ph][sc.id]]), [`sam_${ph}_duration_s`, (S.samMs[ph]/1000).toFixed(1)]])),
     completed_at:new Date().toISOString(), completion_code:S.code,
   };
 }
@@ -624,20 +739,13 @@ function endGame(reason){
   S.endReason = reason; log("game_end", {reason});
   S.ended = true; clearInterval(S.timer);
   S.gameMs = now(); S.endedAt = new Date().toISOString();
-  screenQuestionnaire();
+  screenSAM("post", screenQuestionnaire);
 }
 
 function screenQuestionnaire(){
-  const r = S.endReason;
-  const reasonText = r==="time_limit" ? "Žaidimo laikas baigėsi." : r==="max_spins" ? "Pasiekėte didžiausią leistiną dėžių skaičių." : "Žaidimą baigėte.";
   const shownAt = performance.now();
   app.className = "wrap";
   app.innerHTML = `
-    <div class="card">
-      <span class="eyebrow">Žaidimas baigtas</span>
-      <h1>${reasonText}</h1>
-      <p>Kad užbaigtumėte tyrimą, atsakykite į trumpą klausimyną žemiau.</p>
-    </div>
     <form class="card" id="pgsi" novalidate>
       <div class="stack">
         <span class="eyebrow">Klausimynas</span>
@@ -723,7 +831,7 @@ async function finishStudy(){
 }
 
 function researcherPanel(sum, eventsCSV, summaryCSV){
-  const keys = ["condition","skins_mode","end_reason","game_duration_s","pgsi_total","questionnaire_duration_s","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
+  const keys = ["condition","skins_mode","end_reason","game_duration_s","pgsi_total","questionnaire_duration_s","sam_pre_valence","sam_pre_arousal","sam_pre_dominance","sam_post_valence","sam_post_arousal","sam_post_dominance","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
   return `<div class="card">
     <span class="eyebrow">Researcher view · demo only</span>
     <h2>Recorded data for this session</h2>
