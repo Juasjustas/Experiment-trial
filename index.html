@@ -122,6 +122,10 @@
   .q-opts label:has(input:checked){border-color:var(--go); background:color-mix(in srgb, var(--go) 16%, var(--panel-2))}
   .q-opts label:has(input:focus-visible){outline:2px solid var(--coin); outline-offset:2px}
   .q-err{color:var(--warn)}
+  .q-opts.five{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .q-ends{display:flex; justify-content:space-between; gap:12px; margin-top:6px; font-size:.8rem; color:var(--muted)}
+  .q-comment{display:flex; flex-direction:column; gap:6px; margin-top:12px; font-size:.88rem; color:var(--muted)}
+  .q-comment textarea{min-height:72px; font:14px/1.45 var(--body); resize:vertical}
 
   /* SAM: 5 figures with a point under each figure and between each pair (9 points) */
   .sam{clear:both; display:grid; grid-template-columns:repeat(4, minmax(0,1fr) minmax(0,.5fr)) minmax(0,1fr); row-gap:6px; align-items:end}
@@ -189,6 +193,9 @@ const CONFIG = {
   // SET TO false FOR THE REAL STUDY so participants are assigned to groups automatically.
   SHOW_GROUP_PICKER: true,
 
+  // Pilot feedback questions at the very end (rate the study 1-5 + optional comments). Set false for the main study.
+  SHOW_PILOT: true,
+
   // Data saving. Leave DATAPIPE_ID empty to run in demo mode (data shown on screen, nothing sent).
   // With an ID from pipe.jspsych.org, data is saved to your OSF project and groups are balanced
   // (set "Number of conditions" to 2 in the DataPipe dashboard).
@@ -240,6 +247,17 @@ const SAM = {
     {id:"valence",   title:"Valentingumas", left:"Laimingas(-a), patenkintas(-a), viltingas(-a)",  right:"Nelaimingas(-a), susierzinęs(-usi), nusivylęs(-usi)", scores:[9,8,7,6,5,4,3,2,1]},
     {id:"arousal",   title:"Sužadinimas",    left:"Susijaudinęs(-usi), budrus(-i), įsitempęs(-usi)", right:"Ramus(-i), atsipalaidavęs(-usi), mieguistas(-a)",    scores:[9,8,7,6,5,4,3,2,1]},
     {id:"dominance", title:"Dominavimas",    left:"Kontroliuojamas(-a), priklausomas(-a)",           right:"Kontroliuojantis(-i), valdantis(-i) situaciją",       scores:[1,2,3,4,5,6,7,8,9]},
+  ],
+};
+
+// Pilot feedback, shown last when CONFIG.SHOW_PILOT is true. Ratings are 1-5; comments are optional.
+const PILOT = {
+  scale: ["1", "2", "3", "4", "5"], low: "Labai prastai", high: "Labai gerai",
+  comment: "Papildomas komentaras:",
+  items: [
+    {id:"clarity",        text:"Kaip įvertintumėte testo aiškumą?"},
+    {id:"questionnaires", text:"Kaip įvertintumėte anketinius klausimus?"},
+    {id:"game",           text:"Kaip įvertintumėte šanso žaidimą?"},
   ],
 };
 
@@ -330,7 +348,7 @@ const S = {
   spinning:false, ended:false, t0:null, lastReveal:null, outAt:null,
   hiddenMs:0, hiddenAt:null, firstWithdrawSpin:null, latencies:[], drops:[],
   events:[], startedAt:null, endReason:null, code:makeCode(), pendingEnd:null,
-  gameMs:null, endedAt:null, pgsi:null, pgsiMs:null, sam:{pre:null, post:null}, samMs:{pre:null, post:null},
+  gameMs:null, endedAt:null, pgsi:null, pgsiMs:null, pilot:null, pilotMs:null, sam:{pre:null, post:null}, samMs:{pre:null, post:null},
 };
 const rarityShown = () => S.cond==="skins";
 const colorOf = it => S.cond==="plain" ? CONFIG.PLAIN_COLOR : it.tierObj.color;
@@ -686,6 +704,7 @@ function summary(){
     withdraw_amount:CONFIG.WITHDRAW_AMOUNT,
     ...Object.fromEntries(S.pgsi.map((v,i)=>[`pgsi_${i+1}`, v])),
     pgsi_total:S.pgsi.reduce((a,b)=>a+b,0), questionnaire_duration_s:(S.pgsiMs/1000).toFixed(1),
+    ...(S.pilot ? {...S.pilot, pilot_duration_s:(S.pilotMs/1000).toFixed(1)} : {}),
     ...Object.fromEntries(["pre","post"].flatMap(ph => [...SAM.scales.map(sc => [`sam_${ph}_${sc.id}`, S.sam[ph][sc.id]]), [`sam_${ph}_duration_s`, (S.samMs[ph]/1000).toFixed(1)]])),
     completed_at:new Date().toISOString(), completion_code:S.code,
   };
@@ -710,7 +729,57 @@ function endGame(reason){
   S.endReason = reason; log("game_end", {reason});
   S.ended = true; clearInterval(S.timer);
   S.gameMs = now(); S.endedAt = new Date().toISOString();
-  screenSAM("post", finishStudy);
+  screenSAM("post", CONFIG.SHOW_PILOT ? screenPilot : finishStudy);
+}
+
+function screenPilot(){
+  const shownAt = performance.now();
+  app.className = "wrap";
+  app.innerHTML = `
+    <form class="card" id="pilot" novalidate>
+      <div class="stack">
+        <span class="eyebrow">Bandomasis tyrimas</span>
+        <h2>Įvertinkite šį tyrimą</h2>
+        <p>Jūsų atsiliepimai padės patobulinti tyrimą. Pažymėkite nuo 1 (labai prastai) iki 5 (labai gerai). Komentarai neprivalomi.</p>
+      </div>
+      <div class="q-list">
+        ${PILOT.items.map((q,i) => `
+        <fieldset class="q" id="p${i+1}">
+          <legend><span class="num">${i+1}.</span>${esc(q.text)}</legend>
+          <div class="q-opts five">${PILOT.scale.map((o,v) => `<label><input type="radio" name="pilot_${q.id}" value="${v+1}"><span>${esc(o)}</span></label>`).join("")}</div>
+          <div class="q-ends"><span>${esc(PILOT.low)}</span><span>${esc(PILOT.high)}</span></div>
+          <label class="q-comment">${esc(PILOT.comment)}<textarea name="pilot_${q.id}_comment" maxlength="2000"></textarea></label>
+        </fieldset>`).join("")}
+      </div>
+      <p class="q-err" id="pErr" role="alert" hidden></p>
+      <div class="row"><button class="btn-go" type="submit">Baigti</button></div>
+    </form>`;
+  window.scrollTo(0, 0);
+  const form = $("#pilot"), err = $("#pErr");
+  form.onchange = e => {
+    if(e.target.type !== "radio") return;
+    const f = e.target.closest(".q"); if(f) f.classList.remove("missing");
+    const left = form.querySelectorAll(".q.missing").length;
+    err.hidden = !left; err.textContent = `Įvertinkite visus klausimus (liko neįvertintų: ${left}).`;
+  };
+  form.onsubmit = e => {
+    e.preventDefault();
+    const ans = PILOT.items.map(q => { const c = $(`input[name="pilot_${q.id}"]:checked`, form); return c ? +c.value : null; });
+    const missing = ans.flatMap((v,i) => v===null ? [i] : []);
+    form.querySelectorAll(".q").forEach((f,i) => f.classList.toggle("missing", missing.includes(i)));
+    if(missing.length){
+      err.hidden = false;
+      err.textContent = `Įvertinkite visus klausimus (liko neįvertintų: ${missing.length}).`;
+      $("#p"+(missing[0]+1)).scrollIntoView({behavior:"smooth", block:"center"});
+      return;
+    }
+    S.pilot = Object.fromEntries(PILOT.items.flatMap((q,i) => [
+      [`pilot_${q.id}`, ans[i]],
+      [`pilot_${q.id}_comment`, $(`textarea[name="pilot_${q.id}_comment"]`, form).value.trim()],
+    ]));
+    S.pilotMs = Math.round(performance.now() - shownAt);
+    finishStudy();
+  };
 }
 
 function screenQuestionnaire(){
@@ -801,7 +870,7 @@ async function finishStudy(){
 }
 
 function researcherPanel(sum, eventsCSV, summaryCSV){
-  const keys = ["condition","skins_mode","end_reason","game_duration_s","pgsi_total","questionnaire_duration_s","sam_pre_valence","sam_pre_arousal","sam_pre_dominance","sam_post_valence","sam_post_arousal","sam_post_dominance","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
+  const keys = ["condition","skins_mode","end_reason","game_duration_s","pgsi_total","questionnaire_duration_s","sam_pre_valence","sam_pre_arousal","sam_pre_dominance","sam_post_valence","sam_post_arousal","sam_post_dominance","pilot_clarity","pilot_questionnaires","pilot_game","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
   return `<div class="card">
     <span class="eyebrow">Researcher view · demo only</span>
     <h2>Recorded data for this session</h2>
