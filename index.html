@@ -126,7 +126,7 @@
   /* SAM: 5 figures with a point under each figure and between each pair (9 points) */
   .sam{clear:both; display:grid; grid-template-columns:repeat(4, minmax(0,1fr) minmax(0,.5fr)) minmax(0,1fr); row-gap:6px; align-items:end}
   .sam .fig{grid-row:1; display:flex; justify-content:center; padding:4px; border-radius:6px; border:1px solid transparent; cursor:pointer; color:var(--text)}
-  .sam .fig svg{width:100%; max-width:72px; height:auto}
+  .sam .fig img{display:block; width:100%; max-width:92px; height:auto; filter:invert(.9)}  /* black line art -> light lines */
   .sam .fig.on{border-color:var(--go); background:color-mix(in srgb, var(--go) 12%, transparent)}
   .sam .pt{grid-row:2; display:flex; justify-content:center; cursor:pointer; padding:6px 0}
   .sam .pt input{width:20px; height:20px; margin:0; accent-color:var(--go); cursor:pointer}
@@ -153,6 +153,8 @@
     .reveal{grid-template-columns:1fr; justify-items:start}
     .card{padding:18px}
     .q-opts{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .q:has(.sam){padding:12px 8px}
+    .sam .fig{margin-inline:-8px; padding:2px}  /* let figures use the empty space above the in-between points */
   }
   @media (prefers-reduced-motion: reduce){ .strip{transition-duration:.6s !important} }
 </style>
@@ -230,14 +232,14 @@ const ITEMS = [
 ];
 
 // Self-Assessment Manikin (Bradley & Lang, 1994), shown before and right after the game.
-// Figures appear in the published order (left to right). `scores` gives the 1-9 value of each of the
+// Figures are the paper-and-pencil SAM from the IAPS technical manual (sam/*.png), in its left-to-right order. `scores` gives the 1-9 value of each of the
 // 9 points from left to right, so 9 always means more pleasure / more arousal / more control.
 const SAM = {
   intro: "Kiekvienoje eilutėje pasirinkite paveikslėlį arba tašką tarp dviejų paveikslėlių, kuris geriausiai atspindi, kaip jaučiatės šiuo metu.",
   scales: [
-    {id:"valence",   title:"Malonumas",      left:"Laimingas(-a), patenkintas(-a), viltingas(-a)",  right:"Nelaimingas(-a), susierzinęs(-usi), nusivylęs(-usi)", scores:[9,8,7,6,5,4,3,2,1]},
-    {id:"arousal",   title:"Susijaudinimas", left:"Susijaudinęs(-usi), budrus(-i), įsitempęs(-usi)", right:"Ramus(-i), atsipalaidavęs(-usi), mieguistas(-a)",    scores:[9,8,7,6,5,4,3,2,1]},
-    {id:"dominance", title:"Kontrolė",       left:"Kontroliuojamas(-a), priklausomas(-a)",           right:"Kontroliuojantis(-i), valdantis(-i) situaciją",       scores:[1,2,3,4,5,6,7,8,9]},
+    {id:"valence",   title:"Valentingumas", left:"Laimingas(-a), patenkintas(-a), viltingas(-a)",  right:"Nelaimingas(-a), susierzinęs(-usi), nusivylęs(-usi)", scores:[9,8,7,6,5,4,3,2,1]},
+    {id:"arousal",   title:"Sužadinimas",    left:"Susijaudinęs(-usi), budrus(-i), įsitempęs(-usi)", right:"Ramus(-i), atsipalaidavęs(-usi), mieguistas(-a)",    scores:[9,8,7,6,5,4,3,2,1]},
+    {id:"dominance", title:"Dominavimas",    left:"Kontroliuojamas(-a), priklausomas(-a)",           right:"Kontroliuojantis(-i), valdantis(-i) situaciją",       scores:[1,2,3,4,5,6,7,8,9]},
   ],
 };
 
@@ -304,37 +306,6 @@ function avatarSVG(s){
 }
 const coinSVG = () => `<svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="32" cy="46" rx="22" ry="8" fill="#a8801e"/><rect x="10" y="38" width="44" height="8" fill="#a8801e"/><ellipse cx="32" cy="38" rx="22" ry="8" fill="#e8c15a"/><ellipse cx="32" cy="32" rx="22" ry="8" fill="#a8801e"/><rect x="10" y="24" width="44" height="8" fill="#a8801e"/><ellipse cx="32" cy="24" rx="22" ry="8" fill="#f2d27a"/><ellipse cx="32" cy="24" rx="12" ry="4" fill="none" stroke="#a8801e" stroke-width="2"/></svg>`;
 
-// SAM manikin: k = 0..4 is the figure's position in its row (left to right).
-function samSVG(scale, k){
-  const body = `<path d="M16 28 H44 V32 H54 V48 H48 V38 H44 V54 H42 V76 H33 V58 H27 V76 H18 V54 H16 V38 H12 V48 H6 V32 H16 Z" fill="var(--panel-2)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-    <rect x="19" y="6" width="22" height="20" rx="1.5" fill="var(--panel-2)" stroke="currentColor" stroke-width="1.6"/>
-    <path d="M19 10 H41" stroke="currentColor" stroke-width="1.6"/>`;
-  const eyesOpen = `<rect x="23.5" y="13" width="4" height="3.5" fill="currentColor"/><rect x="32.5" y="13" width="4" height="3.5" fill="currentColor"/>`;
-  let face = eyesOpen, extra = "";
-  if(scale==="valence"){
-    const d = [5,2.5,0,-2.5,-5][k];
-    face += `<path d="M24 ${21-d/2} Q30 ${21+d} 36 ${21-d/2}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`;
-  } else {
-    face += `<path d="M25.5 21.5 H34.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`;
-  }
-  if(scale==="arousal"){
-    const eyes = [
-      `<circle cx="25.5" cy="14.5" r="2.8" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="34.5" cy="14.5" r="2.8" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="25.5" cy="14.5" r="1.1" fill="currentColor"/><circle cx="34.5" cy="14.5" r="1.1" fill="currentColor"/>`,
-      eyesOpen, eyesOpen,
-      `<rect x="23.5" y="14.5" width="4" height="2" fill="currentColor"/><rect x="32.5" y="14.5" width="4" height="2" fill="currentColor"/>`,
-      `<path d="M23.5 15.5 H27.5 M32.5 15.5 H36.5" stroke="currentColor" stroke-width="1.4"/>`,
-    ][k];
-    face = face.replace(eyesOpen, eyes);
-    const r = [12,9,6,3.5,1.3][k], pts = [];
-    for(let i=0;i<16;i++){ const a = i*Math.PI/8, rr = i%2 ? r*.45 : r; pts.push((30+rr*Math.cos(a)).toFixed(1)+","+(41+rr*Math.sin(a)).toFixed(1)); }
-    extra = k===4 ? `<circle cx="30" cy="41" r="1.3" fill="currentColor"/>` : `<polygon points="${pts.join(" ")}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>`;
-    if(k===0) extra += `<path d="M2 20 Q0 26 2 32 M58 20 Q60 26 58 32 M4 54 Q2 60 4 66 M56 54 Q58 60 56 66" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`;
-  }
-  let fig = body + face + extra;
-  if(scale==="dominance"){ const f = [.4,.55,.7,.85,1][k]; fig = `<g transform="translate(${30-30*f} ${78-78*f}) scale(${f})">${fig}</g>`; }
-  return `<svg viewBox="0 0 60 80" aria-hidden="true">${fig}</svg>`;
-}
-
 function itemFor(idx){const it=ITEMS[idx];return {...it, idx, tierObj:tierById(it.tier)}}
 function cellHTML(it){
   return `<div class="cell" style="--t:${colorOf(it)}">${avatarSVG(it)}<span class="nm">${esc(it.name)}</span></div>`;
@@ -388,11 +359,11 @@ function screenConsent(){
     <div class="card">
       <span class="eyebrow">Informacija dalyviui</span>
       <h1>${esc(CONFIG.STUDY_TITLE)}</h1>
-      <p>Šis tyrimas atliekamas rengiant bakalauro baigiamąjį darbą (${esc(CONFIG.RESEARCHER)}). Žaisite trumpą žaidimą, kuriame žaidimo monetomis atidarinėsite virtualias dėžes, o pabaigoje atsakysite į kelis klausimus. Tai užtruks apie 5–15 minučių.</p>
+      <p>Šis tyrimas atliekamas rengiant bakalauro baigiamąjį darbą (${esc(CONFIG.RESEARCHER)}). Žaisite trumpą žaidimą, kuriame žaidimo monetomis atidarinėsite virtualias dėžes, Prieš žaidimą atsakysite į kelis klausimus apie lošimą ir įvertinsite savo savijautą, o po žaidimo savijautą įvertinsite dar kartą. Tai užtruks apie 5–15 minučių.</p>
       <ul>
         <li>Monetos ir avatarai nėra tikri ir neturi jokios piniginės vertės. Tikri pinigai nenaudojami.</li>
         <li>Žaisti galite nustoti kada panorėję, o iš tyrimo pasitraukti galite bet kuriuo metu, nenurodydami priežasties.</li>
-        <li>Registruojame Jūsų pasirinkimus žaidime, kiek laiko jie užtrunka, savijautos įvertinimus prieš žaidimą ir po jo bei atsakymus į klausimyną apie lošimą. Vardai ir kontaktiniai duomenys nerenkami.</li>
+        <li>Registruojame Jūsų pasirinkimus žaidime, kiek laiko jie užtrunka, atsakymus į klausimyną apie lošimą ir savijautos įvertinimus prieš žaidimą ir po jo. Vardai ir kontaktiniai duomenys nerenkami.</li>
         <li>Dalyvauti gali tik 18 metų ir vyresni asmenys.</li>
       </ul>
       <p>Klausimai: <span class="num">${esc(CONFIG.CONTACT)}</span></p>
@@ -410,7 +381,7 @@ function screenConsent(){
     go.disabled = true; go.textContent = "Kraunama…";
     S.condSource = PICKER && picked!=="random" ? "picker" : "assigned";
     S.cond = await assignCondition(PICKER ? picked : null);
-    screenSAM("pre", screenInstructions);
+    screenQuestionnaire();
   };
 }
 
@@ -437,7 +408,7 @@ function screenSAM(phase, next){
     ${phase==="post" ? `<div class="card">
       <span class="eyebrow">Žaidimas baigtas</span>
       <h1>${reasonText}</h1>
-      <p>Kad užbaigtumėte tyrimą, atsakykite į du trumpus klausimynus.</p>
+      <p>Kad užbaigtumėte tyrimą, dar kartą įvertinkite savo savijautą.</p>
     </div>` : ""}
     <form class="card" id="sam" novalidate>
       <div class="stack">
@@ -450,7 +421,7 @@ function screenSAM(phase, next){
         <fieldset class="q" id="s${i+1}">
           <legend><span class="num">${i+1}.</span>${esc(sc.title)}</legend>
           <div class="sam">
-            ${[0,1,2,3,4].map(k => `<div class="fig" data-pos="${2*k}" style="grid-column:${2*k+1}">${samSVG(sc.id, k)}</div>`).join("")}
+            ${[0,1,2,3,4].map(k => `<div class="fig" data-pos="${2*k}" style="grid-column:${2*k+1}"><img src="sam/${sc.id}-${k+1}.png" alt=""></div>`).join("")}
             ${sc.scores.map((v,pos) => `<label class="pt" style="grid-column:${pos+1}"><input type="radio" name="sam_${sc.id}" value="${v}" data-pos="${pos}" aria-label="${pos+1} iš 9"></label>`).join("")}
           </div>
           <div class="sam-ends"><span>${esc(sc.left)}</span><span>${esc(sc.right)}</span></div>
@@ -739,7 +710,7 @@ function endGame(reason){
   S.endReason = reason; log("game_end", {reason});
   S.ended = true; clearInterval(S.timer);
   S.gameMs = now(); S.endedAt = new Date().toISOString();
-  screenSAM("post", screenQuestionnaire);
+  screenSAM("post", finishStudy);
 }
 
 function screenQuestionnaire(){
@@ -781,8 +752,7 @@ function screenQuestionnaire(){
       return;
     }
     S.pgsi = ans; S.pgsiMs = Math.round(performance.now() - shownAt);
-    log("questionnaire_submit", {pgsi_total:ans.reduce((a,b)=>a+b,0), questionnaire_ms:S.pgsiMs});
-    finishStudy();
+    screenSAM("pre", screenInstructions);
   };
 }
 
@@ -854,6 +824,7 @@ function wireCopy(ev, sum){
   $("#again").onclick = () => location.reload();
 }
 
+SAM.scales.forEach(sc => [1,2,3,4,5].forEach(k => { new Image().src = `sam/${sc.id}-${k}.png`; }));
 screenConsent();
 </script>
 
