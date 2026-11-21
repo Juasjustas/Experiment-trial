@@ -126,6 +126,9 @@
   .q-ends{display:flex; justify-content:space-between; gap:12px; margin-top:6px; font-size:.8rem; color:var(--muted)}
   .q-comment{display:flex; flex-direction:column; gap:6px; margin-top:12px; font-size:.88rem; color:var(--muted)}
   .q-comment textarea{min-height:72px; font:14px/1.45 var(--body); resize:vertical}
+  .q-opts.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .q-field{clear:both; width:100%; max-width:320px; background:#0b0e14; color:var(--text); border:1px solid var(--line); border-radius:8px; font:15px var(--body); padding:10px 12px}
+  .q-field.short{max-width:120px}
 
   /* SAM: 5 figures with a point under each figure and between each pair (9 points) */
   .sam{clear:both; display:grid; grid-template-columns:repeat(4, minmax(0,1fr) minmax(0,.5fr)) minmax(0,1fr); row-gap:6px; align-items:end}
@@ -348,7 +351,7 @@ const S = {
   spinning:false, ended:false, t0:null, lastReveal:null, outAt:null,
   hiddenMs:0, hiddenAt:null, firstWithdrawSpin:null, latencies:[], drops:[],
   events:[], startedAt:null, endReason:null, code:makeCode(), pendingEnd:null,
-  gameMs:null, endedAt:null, pgsi:null, pgsiMs:null, pilot:null, pilotMs:null, sam:{pre:null, post:null}, samMs:{pre:null, post:null},
+  gameMs:null, endedAt:null, pgsi:null, pgsiMs:null, demo:null, demoMs:null, pilot:null, pilotMs:null, sam:{pre:null, post:null}, samMs:{pre:null, post:null},
 };
 const rarityShown = () => S.cond==="skins";
 const colorOf = it => S.cond==="plain" ? CONFIG.PLAIN_COLOR : it.tierObj.color;
@@ -381,7 +384,7 @@ function screenConsent(){
       <ul>
         <li>Monetos ir avatarai nėra tikri ir neturi jokios piniginės vertės. Tikri pinigai nenaudojami.</li>
         <li>Žaisti galite nustoti kada panorėję, o iš tyrimo pasitraukti galite bet kuriuo metu, nenurodydami priežasties.</li>
-        <li>Registruojame Jūsų pasirinkimus žaidime, kiek laiko jie užtrunka, atsakymus į klausimyną apie lošimą ir savijautos įvertinimus prieš žaidimą ir po jo. Vardai ir kontaktiniai duomenys nerenkami.</li>
+        <li>Registruojame Jūsų pasirinkimus žaidime, kiek laiko jie užtrunka, atsakymus į klausimyną apie lošimą, savijautos įvertinimus prieš žaidimą ir po jo bei demografinius duomenis (lytį, amžių, išsilavinimą). Vardai ir kontaktiniai duomenys nerenkami.</li>
         <li>Dalyvauti gali tik 18 metų ir vyresni asmenys.</li>
       </ul>
       <p>Klausimai: <span class="num">${esc(CONFIG.CONTACT)}</span></p>
@@ -704,6 +707,7 @@ function summary(){
     withdraw_amount:CONFIG.WITHDRAW_AMOUNT,
     ...Object.fromEntries(S.pgsi.map((v,i)=>[`pgsi_${i+1}`, v])),
     pgsi_total:S.pgsi.reduce((a,b)=>a+b,0), questionnaire_duration_s:(S.pgsiMs/1000).toFixed(1),
+    gender:S.demo.gender, age:S.demo.age, education:S.demo.education, demographics_duration_s:(S.demoMs/1000).toFixed(1),
     ...(S.pilot ? {...S.pilot, pilot_duration_s:(S.pilotMs/1000).toFixed(1)} : {}),
     ...Object.fromEntries(["pre","post"].flatMap(ph => [...SAM.scales.map(sc => [`sam_${ph}_${sc.id}`, S.sam[ph][sc.id]]), [`sam_${ph}_duration_s`, (S.samMs[ph]/1000).toFixed(1)]])),
     completed_at:new Date().toISOString(), completion_code:S.code,
@@ -729,7 +733,66 @@ function endGame(reason){
   S.endReason = reason; log("game_end", {reason});
   S.ended = true; clearInterval(S.timer);
   S.gameMs = now(); S.endedAt = new Date().toISOString();
-  screenSAM("post", CONFIG.SHOW_PILOT ? screenPilot : finishStudy);
+  screenSAM("post", screenDemographics);
+}
+
+// Saved as gender (1 = Vyras, 2 = Moteris, 3 = Kita), age (18-100) and education (free text).
+function screenDemographics(){
+  const shownAt = performance.now();
+  app.className = "wrap";
+  app.innerHTML = `
+    <form class="card" id="demo" novalidate>
+      <div class="stack">
+        <span class="eyebrow">Apie Jus</span>
+        <h2>Demografiniai duomenys</h2>
+      </div>
+      <div class="q-list">
+        <fieldset class="q" id="d1">
+          <legend><span class="num">1.</span>Lytis</legend>
+          <div class="q-opts three">${["Vyras","Moteris","Kita"].map((o,v) => `<label><input type="radio" name="gender" value="${v+1}"><span>${o}</span></label>`).join("")}</div>
+        </fieldset>
+        <fieldset class="q" id="d2">
+          <legend><span class="num">2.</span><label for="age">Amžius</label></legend>
+          <input class="q-field short" id="age" name="age" type="number" inputmode="numeric" min="18" max="100" step="1" autocomplete="off">
+        </fieldset>
+        <fieldset class="q" id="d3">
+          <legend><span class="num">3.</span><label for="edu">Išsilavinimo lygis</label></legend>
+          <input class="q-field" id="edu" name="education" type="text" maxlength="200" autocomplete="off">
+        </fieldset>
+      </div>
+      <p class="q-err" id="dErr" role="alert" hidden></p>
+      <div class="row"><button class="btn-go" type="submit">Tęsti</button></div>
+    </form>`;
+  window.scrollTo(0, 0);
+  const form = $("#demo"), err = $("#dErr");
+  const read = () => {
+    const g = $('input[name="gender"]:checked', form);
+    const ageTxt = $("#age").value.trim(), age = Number(ageTxt);
+    return {gender: g ? +g.value : null,
+            age: /^\d+$/.test(ageTxt) && age >= 18 && age <= 100 ? age : null,
+            education: $("#edu").value.trim() || null};
+  };
+  const check = d => [d.gender, d.age, d.education].flatMap((v,i) => v===null ? [i] : []);
+  const message = (d, missing) => missing.length===1 && missing[0]===1 && $("#age").value.trim()
+    ? "Įveskite amžių skaičiais (18–100)." : `Atsakykite į visus klausimus (liko neatsakytų: ${missing.length}).`;
+  form.oninput = form.onchange = () => {
+    if(err.hidden) return;
+    const d = read(), missing = check(d);
+    form.querySelectorAll(".q").forEach((f,i) => f.classList.toggle("missing", missing.includes(i)));
+    err.hidden = !missing.length; err.textContent = message(d, missing);
+  };
+  form.onsubmit = e => {
+    e.preventDefault();
+    const d = read(), missing = check(d);
+    form.querySelectorAll(".q").forEach((f,i) => f.classList.toggle("missing", missing.includes(i)));
+    if(missing.length){
+      err.hidden = false; err.textContent = message(d, missing);
+      $("#d"+(missing[0]+1)).scrollIntoView({behavior:"smooth", block:"center"});
+      return;
+    }
+    S.demo = d; S.demoMs = Math.round(performance.now() - shownAt);
+    (CONFIG.SHOW_PILOT ? screenPilot : finishStudy)();
+  };
 }
 
 function screenPilot(){
@@ -870,7 +933,7 @@ async function finishStudy(){
 }
 
 function researcherPanel(sum, eventsCSV, summaryCSV){
-  const keys = ["condition","skins_mode","end_reason","game_duration_s","pgsi_total","questionnaire_duration_s","sam_pre_valence","sam_pre_arousal","sam_pre_dominance","sam_post_valence","sam_post_arousal","sam_post_dominance","pilot_clarity","pilot_questionnaires","pilot_game","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
+  const keys = ["condition","skins_mode","end_reason","game_duration_s","pgsi_total","questionnaire_duration_s","sam_pre_valence","sam_pre_arousal","sam_pre_dominance","sam_post_valence","sam_post_arousal","sam_post_dominance","gender","age","education","pilot_clarity","pilot_questionnaires","pilot_game","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
   return `<div class="card">
     <span class="eyebrow">Researcher view · demo only</span>
     <h2>Recorded data for this session</h2>
