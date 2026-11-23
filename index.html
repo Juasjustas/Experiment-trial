@@ -184,6 +184,9 @@ const CONFIG = {
   // outcomes (removes luck as a confound). false = new random sequence per person (seed is logged).
   SAME_SEQUENCE_FOR_ALL: true,
   SEED: 20260944,             // chosen so early outcomes are typical: no Legendary in the first 10 spins, ~96% return over 60
+  // Override single spins (spin number: item name). Every other spin stays exactly as the seed makes it.
+  // 20 <-> 47 swap: the first Legendary comes at spin 20 instead of 47; total payout (and the spin-71 out-of-coins point) is unchanged.
+  FIXED_DROPS: {20: "Pašvaistės valdovas", 47: "Šalnakandis"},
 
   // Groups: "skins" (avatars with rarity info) and "plain" (same avatars, no rarity info, one background colour).
   // Participants are split evenly across the two.
@@ -335,7 +338,9 @@ function cellHTML(it){
 /* ---------- pre-generated outcomes (identical across groups) ---------- */
 function spinPlan(i){
   const rng = mulberry32((S.seed ^ Math.imul(i+1, 2654435761)) >>> 0);
-  const win = pickItem(rng());
+  const drawn = pickItem(rng());   // always drawn, so fixing a spin leaves the rest of the sequence unchanged
+  const fixed = ITEMS.findIndex(x => x.name === CONFIG.FIXED_DROPS[i+1]);
+  const win = fixed >= 0 ? fixed : drawn;
   const cells = [];
   for(let k=0;k<STRIP_LEN;k++) cells.push(k===WIN_INDEX ? win : pickItem(rng()));
   return {win, cells, jitter:(rng()-.5)*0.7};
