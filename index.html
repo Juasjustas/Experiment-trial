@@ -127,6 +127,8 @@
   .q-comment{display:flex; flex-direction:column; gap:6px; margin-top:12px; font-size:.88rem; color:var(--muted)}
   .q-comment textarea{min-height:72px; font:14px/1.45 var(--body); resize:vertical}
   .q-opts.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .q-opts.list{grid-template-columns:1fr}
+  .q-opts.list label{justify-content:flex-start; text-align:left; padding-inline:14px}
   .q-field{clear:both; width:100%; max-width:320px; background:#0b0e14; color:var(--text); border:1px solid var(--line); border-radius:8px; font:15px var(--body); padding:10px 12px}
   .q-field.short{max-width:120px}
 
@@ -199,6 +201,10 @@ const CONFIG = {
   // SET TO false FOR THE REAL STUDY so participants are assigned to groups automatically.
   SHOW_GROUP_PICKER: true,
 
+  // Inactivity: a pause of at least this many seconds with no click, key press, typing, touch or scroll is
+  // logged (from the last action to the next one) as an "inactivity" event, on every screen of the study.
+  INACTIVITY_SEC: 60,
+
   // Pilot feedback questions at the very end (rate the study 1-5 + optional comments). Set false for the main study.
   SHOW_PILOT: true,
 
@@ -213,7 +219,7 @@ const CONFIG = {
   // First-screen text, one string per paragraph (the pilot wording; update it for the main study).
   INTRO: [
     "Sveikas,",
-    "Aš esu Justas Ašmonas, esu psichologijos 4 kurso studentas ir smagu, kad nusprendei prisidėti prie mano bakalauro projekto. Šiuo metu tai tik pilotinis tyrimas, skirtas pratestuoti klausimus ir jų kokybę. Šis tyrimas susideda iš kelių klausimynų ir žaidimo. Svarbu – žaidimą žaisk tiek, kiek nori, nėra jokio laiko limito. Daugiau informacijos apie šį tyrimą gali atrasti jo pabaigoje.",
+    "Aš esu Justas Ašmonas, esu psichologijos 4 kurso studentas ir smagu, kad nusprendei prisidėti prie mano bakalauro projekto. Šiuo metu tai tik pilotinis tyrimas, skirtas pratestuoti klausimus ir jų kokybę. Šis tyrimas susideda iš kelių klausimynų ir žaidimo. Svarbu – žaidimą žaisk tiek, kiek nori, nėra jokio laiko limito, taigi tyrimo trukmė priklauso nuo tavęs. Daugiau informacijos apie šį tyrimą gali atrasti jo pabaigoje.",
   ],
   CONTACT: "justas.asmonas@fsf.stud.vu.lt",
   HELP_TEXT: "Jei lošimas kelia problemų Jums ar Jūsų artimiesiems, galite nemokamai ir konfidencialiai kreiptis pagalbos: [įrašykite pagalbos lošėjams linijos kontaktus].",
@@ -259,6 +265,17 @@ const SAM = {
     {id:"dominance", title:"Dominavimas",    left:"Kontroliuojamas(-a), priklausomas(-a)",           right:"Kontroliuojantis(-i), valdantis(-i) situaciją",       scores:[1,2,3,4,5,6,7,8,9]},
   ],
 };
+
+// Education levels (saved as the 1-based code).
+const EDUCATION = [
+  "Pagrindinis",
+  "Vidurinis",
+  "Profesinis",
+  "Aukštasis koleginis (profesinis bakalauras)",
+  "Aukštasis universitetinis (bakalauras)",
+  "Aukštasis universitetinis (magistras)",
+  "Mokslų daktaras",
+];
 
 // Pilot feedback, shown last when CONFIG.SHOW_PILOT is true. Ratings are 1-5; comments are optional.
 const PILOT = {
@@ -360,14 +377,51 @@ const S = {
   spinning:false, ended:false, t0:null, lastReveal:null, outAt:null,
   hiddenMs:0, hiddenAt:null, firstWithdrawSpin:null, latencies:[], drops:[],
   events:[], startedAt:null, endReason:null, code:makeCode(), pendingEnd:null,
+  studyT0:performance.now(), screen:"consent", lastAct:performance.now(), inactive:[], saving:false,
   gameMs:null, endedAt:null, pgsi:null, pgsiMs:null, demo:null, demoMs:null, pilot:null, pilotMs:null, sam:{pre:null, post:null}, samMs:{pre:null, post:null},
 };
 const rarityShown = () => S.cond==="skins";
 const colorOf = it => S.cond==="plain" ? CONFIG.PLAIN_COLOR : it.tierObj.color;
 const sellMode = () => CONFIG.SKINS_MODE==="sell";
 const now = () => Math.round(performance.now() - S.t0);
+const studyMs = (t = performance.now()) => Math.round(t - S.studyT0);
+const condCode = c => CONDS.indexOf(c) + 1 || "";   // 1 = skins, 2 = plain
+const END_CODES = {stopped:1, time_limit:2, max_spins:3};
+
+// Text versions of the coded answers. Each coded column gets a "<name>_text" column right after it in the data,
+// so the files carry both the number (for analysis) and the answer as shown to the participant.
+const PGSI_TEXT = Object.fromEntries(PGSI.options.map((o,v) => [v, o]));
+const TEXT = {
+  condition: {1:"Skins (rarity shown)", 2:"Plain skins (no rarity)"},
+  condition_source: {1:"Assigned automatically", 2:"Chosen on the test picker"},
+  end_reason: {1:"Stopped by participant", 2:"Time limit", 3:"Case limit"},
+  gender: {1:"Vyras", 2:"Moteris", 3:"Kita"},
+  education: Object.fromEntries(EDUCATION.map((e,i) => [i+1, e])),
+  ...Object.fromEntries(PGSI.items.map((_,i) => [`pgsi_${i+1}`, PGSI_TEXT])),
+};
+function withText(row){
+  const out = {};
+  for(const [k,v] of Object.entries(row)){ out[k] = v; if(TEXT[k]) out[k+"_text"] = TEXT[k][v] ?? ""; }
+  return out;
+}
 const invValue = () => S.inventory.reduce((s,x)=>s+ITEMS[x.idx].value,0);
-function log(type, extra={}){ S.events.push({pid:S.pid, condition:S.cond, event:type, t_ms:now(), clock:new Date().toISOString(), spin_n:S.spins, balance:S.balance, inventory_n:S.inventory.length, inventory_value:invValue(), ...extra}); }
+// Event log columns, always in this order so every participant's file has the same layout (for SPSS).
+// study_ms counts from the first screen; t_ms counts from the start of the game (empty before it).
+const EVENT_COLS = ["pid","condition","condition_text","event","screen","study_ms","t_ms","clock","spin_n","balance","inventory_n","inventory_value",
+  "latency_ms","balance_before","tier","item","item_p","value","credited","amount","withdrawal_n","held_ms","obtained_spin",
+  "while_out_of_coins","hidden_ms","inactive_from_ms","inactive_to_ms","inactive_ms","phase","valence","arousal","dominance","reason","seed"];
+function log(type, extra={}){ S.events.push({pid:S.pid, condition:condCode(S.cond), event:type, screen:S.screen, study_ms:studyMs(), t_ms:S.t0 ? now() : "", clock:new Date().toISOString(), spin_n:S.spins, balance:S.balance, inventory_n:S.inventory.length, inventory_value:invValue(), ...extra}); }
+
+// Inactivity: logged when the participant acts again after a long enough pause.
+function onActivity(){
+  const t = performance.now(), gap = t - S.lastAct;
+  if(gap >= CONFIG.INACTIVITY_SEC*1000 && !S.saving){
+    S.inactive.push({ms:gap, game:S.screen==="game"});
+    log("inactivity", {inactive_from_ms:studyMs(S.lastAct), inactive_to_ms:studyMs(t), inactive_ms:Math.round(gap)});
+  }
+  S.lastAct = t;
+}
+["pointerdown","keydown","input","wheel","scroll","touchstart"].forEach(t => addEventListener(t, onActivity, {capture:true, passive:true}));
 
 document.addEventListener("visibilitychange", () => {
   if(!S.t0 || S.ended) return;
@@ -393,7 +447,7 @@ function screenConsent(){
       <ul>
         <li>Monetos ir avatarai nėra tikri ir neturi jokios piniginės vertės. Tikri pinigai nenaudojami.</li>
         <li>Žaisti gali nustoti kada panorėjęs(-usi), o iš tyrimo pasitraukti gali bet kuriuo metu, nenurodydamas(-a) priežasties.</li>
-        <li>Registruojame tavo pasirinkimus žaidime, kiek laiko jie užtrunka, atsakymus į klausimyną apie lošimą, savijautos įvertinimus prieš žaidimą ir po jo bei demografinius duomenis (lytį, amžių, išsilavinimą). Vardai ir kontaktiniai duomenys nerenkami.</li>
+        <li>Registruojame tavo pasirinkimus žaidime, kiek laiko jie užtrunka, atsakymus į klausimyną apie lošimą, savijautos įvertinimus prieš žaidimą ir po jo bei demografinius duomenis (lytį, amžių, išsilavinimą). Užtikrinamas konfidencialumas ir anonimiškumas.</li>
         <li>Dalyvauti gali tik 18 metų ir vyresni asmenys.</li>
       </ul>
       <p>Klausimai: <span class="num">${esc(CONFIG.CONTACT)}</span></p>
@@ -430,6 +484,7 @@ async function assignCondition(demoChoice){
 }
 
 function screenSAM(phase, next){
+  S.screen = "sam_" + phase;
   const shownAt = performance.now();
   const r = S.endReason;
   const reasonText = r==="time_limit" ? "Žaidimo laikas baigėsi." : r==="max_spins" ? "Pasiekėte didžiausią leistiną dėžių skaičių." : "Žaidimą baigėte.";
@@ -485,12 +540,13 @@ function screenSAM(phase, next){
     }
     S.sam[phase] = Object.fromEntries(SAM.scales.map((sc,i) => [sc.id, ans[i]]));
     S.samMs[phase] = Math.round(performance.now() - shownAt);
-    if(S.t0) log("sam_submit", {phase, ...S.sam[phase]});
+    log("sam_submit", {phase, ...S.sam[phase]});
     next();
   };
 }
 
 function screenInstructions(){
+  S.screen = "instructions";
   const plain = S.cond==="plain";
   const rarer = plain ? "" : " Retesni avatarai yra vertingesni.";
   const rule = sellMode() ? "Kiekvienoje dėžėje yra avataras, kuris patenka į Jūsų inventorių. Bet kurį avatarą galite parduoti už monetas." + rarer
@@ -512,6 +568,7 @@ function screenInstructions(){
 }
 
 function startGame(){
+  S.screen = "game";
   S.t0 = performance.now(); S.startedAt = new Date().toISOString();
   log("game_start", {seed:S.seed});
   const panel = rarityShown();
@@ -675,7 +732,7 @@ function sell(uid){
   const wasBroke = S.balance < CONFIG.SPIN_COST;
   S.inventory.splice(k,1);
   S.balance += it.value; S.won += it.value; S.sold++; S.soldValue += it.value;
-  log("sell", {tier:it.tier, item:it.name, item_p:it.p, value:it.value, held_ms:Math.round(performance.now()-x.gotAt), obtained_spin:x.spin, while_out_of_coins:wasBroke});
+  log("sell", {tier:it.tier, item:it.name, item_p:it.p, value:it.value, held_ms:Math.round(performance.now()-x.gotAt), obtained_spin:x.spin, while_out_of_coins:wasBroke ? 1 : 0});
   renderBalance(); renderInventory(); renderControls();
 }
 
@@ -702,10 +759,10 @@ function askStop(){
 function summary(){
   const lat = S.latencies.slice(1);
   const mean = lat.length ? Math.round(lat.reduce((a,b)=>a+b,0)/lat.length) : "";
-  return {
-    pid:S.pid, condition:S.cond, condition_source:S.condSource, skins_mode:CONFIG.SKINS_MODE,
-    seed:S.seed, same_sequence:CONFIG.SAME_SEQUENCE_FOR_ALL,
-    started_at:S.startedAt, ended_at:S.endedAt, end_reason:S.endReason,
+  return withText({
+    pid:S.pid, condition:condCode(S.cond), condition_source:S.condSource==="picker" ? 2 : 1, skins_mode:CONFIG.SKINS_MODE,
+    seed:S.seed, same_sequence:CONFIG.SAME_SEQUENCE_FOR_ALL ? 1 : 0,
+    started_at:S.startedAt, ended_at:S.endedAt, end_reason:END_CODES[S.endReason],
     game_duration_s:(S.gameMs/1000).toFixed(1), time_tab_hidden_s:(S.hiddenMs/1000).toFixed(1),
     n_spins:S.spins, n_withdrawals:S.withdrawals, total_withdrawn:S.withdrawn,
     spins_after_first_withdrawal: S.firstWithdrawSpin===null ? 0 : S.spins - S.firstWithdrawSpin,
@@ -717,14 +774,19 @@ function summary(){
     ...Object.fromEntries(S.pgsi.map((v,i)=>[`pgsi_${i+1}`, v])),
     pgsi_total:S.pgsi.reduce((a,b)=>a+b,0), questionnaire_duration_s:(S.pgsiMs/1000).toFixed(1),
     gender:S.demo.gender, age:S.demo.age, education:S.demo.education, demographics_duration_s:(S.demoMs/1000).toFixed(1),
-    ...(S.pilot ? {...S.pilot, pilot_duration_s:(S.pilotMs/1000).toFixed(1)} : {}),
+    ...Object.fromEntries(PILOT.items.flatMap(q => [[`pilot_${q.id}`, S.pilot ? S.pilot[`pilot_${q.id}`] : ""], [`pilot_${q.id}_comment`, S.pilot ? S.pilot[`pilot_${q.id}_comment`] : ""]])),
+    pilot_duration_s: S.pilot ? (S.pilotMs/1000).toFixed(1) : "",
+    inactive_n:S.inactive.length, inactive_total_s:(S.inactive.reduce((a,x)=>a+x.ms,0)/1000).toFixed(1),
+    inactive_game_n:S.inactive.filter(x=>x.game).length, inactive_game_s:(S.inactive.filter(x=>x.game).reduce((a,x)=>a+x.ms,0)/1000).toFixed(1),
+    study_duration_s:(studyMs()/1000).toFixed(1),
     ...Object.fromEntries(["pre","post"].flatMap(ph => [...SAM.scales.map(sc => [`sam_${ph}_${sc.id}`, S.sam[ph][sc.id]]), [`sam_${ph}_duration_s`, (S.samMs[ph]/1000).toFixed(1)]])),
     completed_at:new Date().toISOString(), completion_code:S.code,
-  };
+  });
 }
-function toCSV(rows){
-  const cols = [...rows.reduce((s,r)=>{Object.keys(r).forEach(k=>s.add(k));return s}, new Set())];
-  const q = v => v===undefined||v===null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g,'""')}"` : String(v);
+function toCSV(rows, cols){
+  cols = cols || [...rows.reduce((s,r)=>{Object.keys(r).forEach(k=>s.add(k));return s}, new Set())];
+  // Line breaks become spaces so every case stays on one line (SPSS reads one case per line).
+  const q = v => { if(v===undefined||v===null) return ""; const t = String(v).replace(/[\r\n]+/g, " "); return /[",]/.test(t) ? `"${t.replace(/"/g,'""')}"` : t; };
   return [cols.join(","), ...rows.map(r => cols.map(c=>q(r[c])).join(","))].join("\n");
 }
 async function saveFile(filename, data){
@@ -745,8 +807,9 @@ function endGame(reason){
   screenSAM("post", screenDemographics);
 }
 
-// Saved as gender (1 = Vyras, 2 = Moteris, 3 = Kita), age (18-100) and education (free text).
+// Saved as gender (1 = Vyras, 2 = Moteris, 3 = Kita), age (18-100) and education (code into EDUCATION).
 function screenDemographics(){
+  S.screen = "demographics";
   const shownAt = performance.now();
   app.className = "wrap";
   app.innerHTML = `
@@ -765,8 +828,8 @@ function screenDemographics(){
           <input class="q-field short" id="age" name="age" type="number" inputmode="numeric" min="18" max="100" step="1" autocomplete="off">
         </fieldset>
         <fieldset class="q" id="d3">
-          <legend><span class="num">3.</span><label for="edu">Išsilavinimo lygis</label></legend>
-          <input class="q-field" id="edu" name="education" type="text" maxlength="200" autocomplete="off">
+          <legend><span class="num">3.</span>Išsilavinimo lygis</legend>
+          <div class="q-opts list">${EDUCATION.map((o,v) => `<label><input type="radio" name="education" value="${v+1}"><span>${esc(o)}</span></label>`).join("")}</div>
         </fieldset>
       </div>
       <p class="q-err" id="dErr" role="alert" hidden></p>
@@ -775,11 +838,11 @@ function screenDemographics(){
   window.scrollTo(0, 0);
   const form = $("#demo"), err = $("#dErr");
   const read = () => {
-    const g = $('input[name="gender"]:checked', form);
+    const g = $('input[name="gender"]:checked', form), ed = $('input[name="education"]:checked', form);
     const ageTxt = $("#age").value.trim(), age = Number(ageTxt);
     return {gender: g ? +g.value : null,
             age: /^\d+$/.test(ageTxt) && age >= 18 && age <= 100 ? age : null,
-            education: $("#edu").value.trim() || null};
+            education: ed ? +ed.value : null};
   };
   const check = d => [d.gender, d.age, d.education].flatMap((v,i) => v===null ? [i] : []);
   const message = (d, missing) => missing.length===1 && missing[0]===1 && $("#age").value.trim()
@@ -805,6 +868,7 @@ function screenDemographics(){
 }
 
 function screenPilot(){
+  S.screen = "pilot";
   const shownAt = performance.now();
   app.className = "wrap";
   app.innerHTML = `
@@ -855,6 +919,7 @@ function screenPilot(){
 }
 
 function screenQuestionnaire(){
+  S.screen = "pgsi";
   const shownAt = performance.now();
   app.className = "wrap";
   app.innerHTML = `
@@ -898,8 +963,10 @@ function screenQuestionnaire(){
 }
 
 async function finishStudy(){
+  S.screen = "end"; S.saving = true;
+  S.events.forEach(e => { e.condition = condCode(S.cond); e.condition_text = TEXT.condition[e.condition] ?? ""; });   // events logged before group assignment get the group too
   const sum = summary();
-  const eventsCSV = toCSV(S.events), summaryCSV = toCSV([sum]);
+  const eventsCSV = toCSV(S.events, EVENT_COLS), summaryCSV = toCSV([sum]);
 
   app.className = "wrap";
   window.scrollTo(0, 0);
@@ -942,7 +1009,7 @@ async function finishStudy(){
 }
 
 function researcherPanel(sum, eventsCSV, summaryCSV){
-  const keys = ["condition","skins_mode","end_reason","game_duration_s","pgsi_total","questionnaire_duration_s","sam_pre_valence","sam_pre_arousal","sam_pre_dominance","sam_post_valence","sam_post_arousal","sam_post_dominance","gender","age","education","pilot_clarity","pilot_questionnaires","pilot_game","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
+  const keys = ["condition","skins_mode","end_reason","game_duration_s","pgsi_total","questionnaire_duration_s","sam_pre_valence","sam_pre_arousal","sam_pre_dominance","sam_post_valence","sam_post_arousal","sam_post_dominance","gender","age","education","inactive_n","inactive_total_s","pilot_clarity","pilot_questionnaires","pilot_game","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
   return `<div class="card">
     <span class="eyebrow">Researcher view · demo only</span>
     <h2>Recorded data for this session</h2>
