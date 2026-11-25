@@ -177,8 +177,8 @@ const CONFIG = {
   SPIN_COST: 100,             // coins per case opening
   WITHDRAW_AMOUNT: 500,       // coins added each time the participant withdraws more
   MAX_WITHDRAWALS: null,      // null = unlimited; or a number, e.g. 5
-  TIME_LIMIT_MIN: 15,         // hard session cap in minutes (participant is not shown a timer)
-  MAX_SPINS: 300,             // safety cap
+  TIME_LIMIT_MIN: null,       // null = no time limit; or minutes, e.g. 15 (the game then ends itself, no timer shown)
+  MAX_SPINS: null,            // null = no cap; or a number of cases after which the game ends itself
 
   // Outcome sequence. true = every participant gets the SAME pre-generated sequence of
   // outcomes (removes luck as a confound). false = new random sequence per person (seed is logged).
@@ -209,9 +209,13 @@ const CONFIG = {
   // Optional: send participants on to another page after saving. pid, cond and code are appended.
   REDIRECT_URL: "",
 
-  STUDY_TITLE: "Sprendimų priėmimas paprastame internetiniame žaidime",
-  RESEARCHER: "[Jūsų vardas ir pavardė], [Psichologijos katedra, universitetas]",
-  CONTACT: "[jusu.el.pastas@universitetas.lt]",
+  STUDY_TITLE: "Įsitraukimas į šanso žaidimus: retumo įtaka, sąsajos su probleminiu lošimu ir subjektyviu susijaudinimu",
+  // First-screen text, one string per paragraph (the pilot wording; update it for the main study).
+  INTRO: [
+    "Sveikas,",
+    "Aš esu Justas Ašmonas, esu psichologijos 4 kurso studentas ir smagu, kad nusprendei prisidėti prie mano bakalauro projekto. Šiuo metu tai tik pilotinis tyrimas, skirtas pratestuoti klausimus ir jų kokybę. Šis tyrimas susideda iš kelių klausimynų ir žaidimo. Svarbu – žaidimą žaisk tiek, kiek nori, nėra jokio laiko limito. Daugiau informacijos apie šį tyrimą gali atrasti jo pabaigoje.",
+  ],
+  CONTACT: "justas.asmonas@fsf.stud.vu.lt",
   HELP_TEXT: "Jei lošimas kelia problemų Jums ar Jūsų artimiesiems, galite nemokamai ir konfidencialiai kreiptis pagalbos: [įrašykite pagalbos lošėjams linijos kontaktus].",
 };
 
@@ -385,11 +389,11 @@ function screenConsent(){
     <div class="card">
       <span class="eyebrow">Informacija dalyviui</span>
       <h1>${esc(CONFIG.STUDY_TITLE)}</h1>
-      <p>Šis tyrimas atliekamas rengiant bakalauro baigiamąjį darbą (${esc(CONFIG.RESEARCHER)}). Žaisite trumpą žaidimą, kuriame žaidimo monetomis atidarinėsite virtualias dėžes, Prieš žaidimą atsakysite į kelis klausimus apie lošimą ir įvertinsite savo savijautą, o po žaidimo savijautą įvertinsite dar kartą. Tai užtruks apie 5–15 minučių.</p>
+      ${CONFIG.INTRO.map(t => `<p>${esc(t)}</p>`).join("")}
       <ul>
         <li>Monetos ir avatarai nėra tikri ir neturi jokios piniginės vertės. Tikri pinigai nenaudojami.</li>
-        <li>Žaisti galite nustoti kada panorėję, o iš tyrimo pasitraukti galite bet kuriuo metu, nenurodydami priežasties.</li>
-        <li>Registruojame Jūsų pasirinkimus žaidime, kiek laiko jie užtrunka, atsakymus į klausimyną apie lošimą, savijautos įvertinimus prieš žaidimą ir po jo bei demografinius duomenis (lytį, amžių, išsilavinimą). Vardai ir kontaktiniai duomenys nerenkami.</li>
+        <li>Žaisti gali nustoti kada panorėjęs(-usi), o iš tyrimo pasitraukti gali bet kuriuo metu, nenurodydamas(-a) priežasties.</li>
+        <li>Registruojame tavo pasirinkimus žaidime, kiek laiko jie užtrunka, atsakymus į klausimyną apie lošimą, savijautos įvertinimus prieš žaidimą ir po jo bei demografinius duomenis (lytį, amžių, išsilavinimą). Vardai ir kontaktiniai duomenys nerenkami.</li>
         <li>Dalyvauti gali tik 18 metų ir vyresni asmenys.</li>
       </ul>
       <p>Klausimai: <span class="num">${esc(CONFIG.CONTACT)}</span></p>
@@ -534,7 +538,7 @@ function startGame(){
   S.lastReveal = performance.now();
   S.timer = setInterval(() => {
     if(S.ended) return;
-    if(now() >= CONFIG.TIME_LIMIT_MIN*60000){ if(S.spinning) S.pendingEnd="time_limit"; else endGame("time_limit"); }
+    if(CONFIG.TIME_LIMIT_MIN && now() >= CONFIG.TIME_LIMIT_MIN*60000){ if(S.spinning) S.pendingEnd="time_limit"; else endGame("time_limit"); }
   }, 1000);
 }
 
@@ -661,7 +665,7 @@ function finishSpin(plan){
   S.spinning = false; S.lastReveal = performance.now();
   renderBalance(); renderReveal(it); renderDrops(); renderInventory(); renderOdds(); renderControls(); $("#stop").disabled = false;
   if(S.pendingEnd) return endGame(S.pendingEnd);
-  if(S.spins >= CONFIG.MAX_SPINS) return endGame("max_spins");
+  if(CONFIG.MAX_SPINS && S.spins >= CONFIG.MAX_SPINS) return endGame("max_spins");
 }
 
 function sell(uid){
