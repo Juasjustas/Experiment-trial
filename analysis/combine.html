@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duomenų sujungimas</title>
+<style>
+  :root{color-scheme:dark; --bg:#10131a; --panel:#181d27; --panel-2:#202634; --line:#2c3445; --text:#e7ebf2; --muted:#8c96a8; --go:#3ccf8e; --warn:#ff8a5c}
+  *{box-sizing:border-box}
+  html,body{background:var(--bg)}
+  body{color:var(--text); font:15px/1.55 "Segoe UI", system-ui, sans-serif; margin:0; padding:24px 16px 40px}
+  .wrap{max-width:720px; margin:0 auto; display:flex; flex-direction:column; gap:16px}
+  h1{font-size:1.5rem; margin:0}
+  p{margin:0}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:20px; display:flex; flex-direction:column; gap:12px}
+  .drop{border:2px dashed var(--line); border-radius:10px; padding:28px 16px; text-align:center; color:var(--muted); cursor:pointer}
+  .drop.over{border-color:var(--go); color:var(--text)}
+  button{font:inherit; font-weight:600; font-size:.95rem; border-radius:8px; border:0; padding:12px 18px; cursor:pointer; background:var(--go); color:#062116}
+  button:disabled{opacity:.45; cursor:not-allowed}
+  .row{display:flex; gap:10px; flex-wrap:wrap}
+  .muted{color:var(--muted); font-size:.9rem}
+  .warn{color:var(--warn)}
+  code{font-family:ui-monospace, Menlo, monospace; font-size:.9em}
+</style></head><body>
+<div class="wrap">
+  <h1>Duomenų sujungimas SPSS</h1>
+  <p class="muted">DataPipe kiekvienam dalyviui OSF išsaugo du failus (<code>…_summary.csv</code> ir <code>…_events.csv</code>). Įkelkite visus failus arba iš OSF atsisiųstą .zip archyvą: gausite du sujungtus failus, kuriuos nuskaito <code>spss_import.sps</code>. Failai apdorojami tik šioje naršyklėje, niekur nesiunčiami.</p>
+  <div class="card">
+    <label class="drop" id="drop">Nutempkite failus čia arba spustelėkite ir pasirinkite (.csv arba .zip)
+      <input id="pick" type="file" multiple accept=".csv,.zip" hidden></label>
+    <p id="status" class="muted">Failai dar neįkelti.</p>
+    <div class="row">
+      <button id="dlSummary" disabled>Atsisiųsti summary_all.csv</button>
+      <button id="dlEvents" disabled>Atsisiųsti events_all.csv</button>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+let merged = {summary:null, events:null};
+
+// RFC 4180 CSV parser (quoted fields, doubled quotes).
+function parseCSV(t){
+  t = t.replace(/^﻿/, "");
+  const rows = []; let r = [], f = "", q = false;
+  for(let i = 0; i < t.length; i++){
+    const c = t[i];
+    if(q){ if(c === '"' && t[i+1] === '"'){ f += '"'; i++; } else if(c === '"') q = false; else f += c; }
+    else if(c === '"') q = true;
+    else if(c === ","){ r.push(f); f = ""; }
+    else if(c === "\n" || c === "\r"){ if(c === "\r" && t[i+1] === "\n") i++; r.push(f); rows.push(r); r = []; f = ""; }
+    else f += c;
+  }
+  if(f !== "" || r.length) { r.push(f); rows.push(r); }
+  return rows.filter(x => x.length > 1 || x[0] !== "");
+}
+function toCSV(cols, rows){
+  const q = v => { const t = String(v ?? "").replace(/[\r\n]+/g, " "); return /[",]/.test(t) ? `"${t.replace(/"/g,'""')}"` : t; };
+  return [cols.join(","), ...rows.map(r => cols.map(c => q(r[c])).join(","))].join("\n") + "\n";
+}
+
+async function readAll(fileList){
+  const texts = [];
+  for(const f of fileList){
+    if(/\.zip$/i.test(f.name)){
+      const zip = await JSZip.loadAsync(f);
+      for(const e of Object.values(zip.files)) if(!e.dir && /\.csv$/i.test(e.name)) texts.push({name:e.name, text:await e.async("string")});
+    } else if(/\.csv$/i.test(f.name)) texts.push({name:f.name, text:await f.text()});
+  }
+  return texts;
+}
+
+async function handle(fileList){
+  $("#status").textContent = "Apdorojama…";
+  const texts = await readAll(fileList);
+  const sets = {summary:{cols:[], rows:[]}, events:{cols:[], rows:[]}};
+  const pids = {}; let skipped = 0;
+  for(const {name, text} of texts){
+    const rows = parseCSV(text); if(!rows.length){ skipped++; continue; }
+    const head = rows[0];
+    const kind = head.includes("completion_code") ? "summary" : head.includes("event") ? "events" : null;
+    if(!kind){ skipped++; continue; }
+    const set = sets[kind];
+    head.forEach(h => { if(!set.cols.includes(h)) set.cols.push(h); });   // same layout for every participant; union just in case
+    for(const r of rows.slice(1)) set.rows.push(Object.fromEntries(head.map((h,j) => [h, r[j] ?? ""])));
+    if(kind === "summary") for(const r of rows.slice(1)) pids[r[0]] = (pids[r[0]] || 0) + 1;
+  }
+  const byPid = (a, b) => String(a.pid).localeCompare(String(b.pid), undefined, {numeric:true});
+  sets.summary.rows.sort(byPid);
+  sets.events.rows.sort((a, b) => byPid(a, b) || (+a.study_ms || 0) - (+b.study_ms || 0));
+  const dup = Object.entries(pids).filter(([,n]) => n > 1).map(([p]) => p);
+  merged.summary = sets.summary.rows.length ? toCSV(sets.summary.cols, sets.summary.rows) : null;
+  merged.events = sets.events.rows.length ? toCSV(sets.events.cols, sets.events.rows) : null;
+  $("#dlSummary").disabled = !merged.summary; $("#dlEvents").disabled = !merged.events;
+  $("#status").innerHTML = `Dalyvių (summary eilučių): <b>${sets.summary.rows.length}</b> · įvykių eilučių: <b>${sets.events.rows.length}</b>` +
+    (skipped ? ` · praleista kitų failų: ${skipped}` : "") +
+    (dup.length ? `<br><span class="warn">Pasikartojantys pid: ${dup.join(", ")} – patikrinkite prieš analizę.</span>` : "");
+}
+
+function download(name, text){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], {type:"text/csv;charset=utf-8"}));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$("#pick").onchange = e => handle(e.target.files);
+const drop = $("#drop");
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); handle(e.dataTransfer.files); };
+$("#dlSummary").onclick = () => download("summary_all.csv", merged.summary);
+$("#dlEvents").onclick = () => download("events_all.csv", merged.events);
+</script>
+</body></html>
