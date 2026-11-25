@@ -387,10 +387,27 @@ const now = () => Math.round(performance.now() - S.t0);
 const studyMs = (t = performance.now()) => Math.round(t - S.studyT0);
 const condCode = c => CONDS.indexOf(c) + 1 || "";   // 1 = skins, 2 = plain
 const END_CODES = {stopped:1, time_limit:2, max_spins:3};
+
+// Text versions of the coded answers. Each coded column gets a "<name>_text" column right after it in the data,
+// so the files carry both the number (for analysis) and the answer as shown to the participant.
+const PGSI_TEXT = Object.fromEntries(PGSI.options.map((o,v) => [v, o]));
+const TEXT = {
+  condition: {1:"Skins (rarity shown)", 2:"Plain skins (no rarity)"},
+  condition_source: {1:"Assigned automatically", 2:"Chosen on the test picker"},
+  end_reason: {1:"Stopped by participant", 2:"Time limit", 3:"Case limit"},
+  gender: {1:"Vyras", 2:"Moteris", 3:"Kita"},
+  education: Object.fromEntries(EDUCATION.map((e,i) => [i+1, e])),
+  ...Object.fromEntries(PGSI.items.map((_,i) => [`pgsi_${i+1}`, PGSI_TEXT])),
+};
+function withText(row){
+  const out = {};
+  for(const [k,v] of Object.entries(row)){ out[k] = v; if(TEXT[k]) out[k+"_text"] = TEXT[k][v] ?? ""; }
+  return out;
+}
 const invValue = () => S.inventory.reduce((s,x)=>s+ITEMS[x.idx].value,0);
 // Event log columns, always in this order so every participant's file has the same layout (for SPSS).
 // study_ms counts from the first screen; t_ms counts from the start of the game (empty before it).
-const EVENT_COLS = ["pid","condition","event","screen","study_ms","t_ms","clock","spin_n","balance","inventory_n","inventory_value",
+const EVENT_COLS = ["pid","condition","condition_text","event","screen","study_ms","t_ms","clock","spin_n","balance","inventory_n","inventory_value",
   "latency_ms","balance_before","tier","item","item_p","value","credited","amount","withdrawal_n","held_ms","obtained_spin",
   "while_out_of_coins","hidden_ms","inactive_from_ms","inactive_to_ms","inactive_ms","phase","valence","arousal","dominance","reason","seed"];
 function log(type, extra={}){ S.events.push({pid:S.pid, condition:condCode(S.cond), event:type, screen:S.screen, study_ms:studyMs(), t_ms:S.t0 ? now() : "", clock:new Date().toISOString(), spin_n:S.spins, balance:S.balance, inventory_n:S.inventory.length, inventory_value:invValue(), ...extra}); }
@@ -742,7 +759,7 @@ function askStop(){
 function summary(){
   const lat = S.latencies.slice(1);
   const mean = lat.length ? Math.round(lat.reduce((a,b)=>a+b,0)/lat.length) : "";
-  return {
+  return withText({
     pid:S.pid, condition:condCode(S.cond), condition_source:S.condSource==="picker" ? 2 : 1, skins_mode:CONFIG.SKINS_MODE,
     seed:S.seed, same_sequence:CONFIG.SAME_SEQUENCE_FOR_ALL ? 1 : 0,
     started_at:S.startedAt, ended_at:S.endedAt, end_reason:END_CODES[S.endReason],
@@ -764,7 +781,7 @@ function summary(){
     study_duration_s:(studyMs()/1000).toFixed(1),
     ...Object.fromEntries(["pre","post"].flatMap(ph => [...SAM.scales.map(sc => [`sam_${ph}_${sc.id}`, S.sam[ph][sc.id]]), [`sam_${ph}_duration_s`, (S.samMs[ph]/1000).toFixed(1)]])),
     completed_at:new Date().toISOString(), completion_code:S.code,
-  };
+  });
 }
 function toCSV(rows, cols){
   cols = cols || [...rows.reduce((s,r)=>{Object.keys(r).forEach(k=>s.add(k));return s}, new Set())];
@@ -947,7 +964,7 @@ function screenQuestionnaire(){
 
 async function finishStudy(){
   S.screen = "end"; S.saving = true;
-  S.events.forEach(e => { e.condition = condCode(S.cond); });   // events logged before group assignment get the group too
+  S.events.forEach(e => { e.condition = condCode(S.cond); e.condition_text = TEXT.condition[e.condition] ?? ""; });   // events logged before group assignment get the group too
   const sum = summary();
   const eventsCSV = toCSV(S.events, EVENT_COLS), summaryCSV = toCSV([sum]);
 

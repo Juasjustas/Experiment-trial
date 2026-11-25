@@ -6,6 +6,7 @@
 * Result: dataset "summary" (one row per participant) and dataset "events" (one row per logged action),
 * also saved as summary.sav and events.sav in the same folder.
 * Missing answers are blank in the CSV and become system-missing.
+* Coded answers come twice: the number (e.g. gender = 2) and the answer as shown (gender_text = Moteris).
 
 * Read Lithuanian letters correctly and use the dot as decimal mark (the CSV files always use a dot).
 SET UNICODE=ON.
@@ -26,6 +27,7 @@ GET DATA
   /VARIABLES=
     pid A40
     condition F1.0
+    condition_text A40
     event A20
     screen A15
     study_ms F12.0
@@ -63,6 +65,7 @@ DATASET NAME events WINDOW=FRONT.
 VARIABLE LABELS
   pid 'Participant ID'
   condition 'Group'
+  condition_text 'Group (text)'
   event 'Event type'
   screen 'Screen the participant was on'
   study_ms 'Time since the first screen (ms)'
@@ -114,13 +117,16 @@ GET DATA
   /VARIABLES=
     pid A40
     condition F1.0
+    condition_text A40
     condition_source F1.0
+    condition_source_text A40
     skins_mode A4
     seed F10.0
     same_sequence F1.0
     started_at A24
     ended_at A24
     end_reason F1.0
+    end_reason_text A30
     game_duration_s F10.1
     time_tab_hidden_s F10.1
     n_spins F6.0
@@ -140,19 +146,30 @@ GET DATA
     spin_cost F6.0
     withdraw_amount F6.0
     pgsi_1 F1.0
+    pgsi_1_text A30
     pgsi_2 F1.0
+    pgsi_2_text A30
     pgsi_3 F1.0
+    pgsi_3_text A30
     pgsi_4 F1.0
+    pgsi_4_text A30
     pgsi_5 F1.0
+    pgsi_5_text A30
     pgsi_6 F1.0
+    pgsi_6_text A30
     pgsi_7 F1.0
+    pgsi_7_text A30
     pgsi_8 F1.0
+    pgsi_8_text A30
     pgsi_9 F1.0
+    pgsi_9_text A30
     pgsi_total F2.0
     questionnaire_duration_s F10.1
     gender F1.0
+    gender_text A20
     age F3.0
     education F1.0
+    education_text A100
     demographics_duration_s F10.1
     pilot_clarity F1.0
     pilot_clarity_comment A4000
@@ -182,13 +199,16 @@ DATASET NAME summary WINDOW=FRONT.
 VARIABLE LABELS
   pid 'Participant ID'
   condition 'Group'
+  condition_text 'Group (text)'
   condition_source 'How the group was set'
+  condition_source_text 'How the group was set (text)'
   skins_mode 'Skin mode (auto = value added to balance, sell = inventory)'
   seed 'Outcome sequence seed'
   same_sequence 'Same outcome sequence for everyone'
   started_at 'Game start (UTC, ISO 8601)'
   ended_at 'Game end (UTC, ISO 8601)'
   end_reason 'How the game ended'
+  end_reason_text 'How the game ended (text)'
   game_duration_s 'Game duration (s)'
   time_tab_hidden_s 'Time the tab was hidden during the game (s)'
   n_spins 'Cases opened'
@@ -208,19 +228,30 @@ VARIABLE LABELS
   spin_cost 'Cost of one case'
   withdraw_amount 'Coins per withdrawal'
   pgsi_1 'PGSI 1: bet more than could afford to lose'
+  pgsi_1_text 'PGSI 1: bet more than could afford to lose (text)'
   pgsi_2 'PGSI 2: needed larger amounts for the same excitement'
+  pgsi_2_text 'PGSI 2: needed larger amounts for the same excitement (text)'
   pgsi_3 'PGSI 3: went back to win back losses'
+  pgsi_3_text 'PGSI 3: went back to win back losses (text)'
   pgsi_4 'PGSI 4: borrowed or sold to gamble'
+  pgsi_4_text 'PGSI 4: borrowed or sold to gamble (text)'
   pgsi_5 'PGSI 5: felt might have a gambling problem'
+  pgsi_5_text 'PGSI 5: felt might have a gambling problem (text)'
   pgsi_6 'PGSI 6: gambling caused health problems'
+  pgsi_6_text 'PGSI 6: gambling caused health problems (text)'
   pgsi_7 'PGSI 7: criticised for gambling'
+  pgsi_7_text 'PGSI 7: criticised for gambling (text)'
   pgsi_8 'PGSI 8: gambling caused financial problems'
+  pgsi_8_text 'PGSI 8: gambling caused financial problems (text)'
   pgsi_9 'PGSI 9: felt guilty about gambling'
+  pgsi_9_text 'PGSI 9: felt guilty about gambling (text)'
   pgsi_total 'PGSI total (0-27)'
   questionnaire_duration_s 'PGSI completion time (s)'
   gender 'Lytis'
+  gender_text 'Lytis (text)'
   age 'Amžius'
   education 'Išsilavinimo lygis'
+  education_text 'Išsilavinimo lygis (text)'
   demographics_duration_s 'Demographics completion time (s)'
   pilot_clarity 'Pilot: test clarity (1-5)'
   pilot_clarity_comment 'Pilot: comment on clarity'
@@ -250,7 +281,7 @@ VALUE LABELS
   /condition_source 1 'Assigned automatically' 2 'Chosen on the test picker'
   /same_sequence 0 'No' 1 'Yes'
   /end_reason 1 'Stopped by participant' 2 'Time limit' 3 'Case limit'
-  /pgsi_1 TO pgsi_9 0 'Niekada' 1 'Kartais' 2 'Dažnai' 3 'Beveik visada'
+  /pgsi_1 pgsi_2 pgsi_3 pgsi_4 pgsi_5 pgsi_6 pgsi_7 pgsi_8 pgsi_9 0 'Niekada' 1 'Kartais' 2 'Dažnai' 3 'Beveik visada'
   /gender 1 'Vyras' 2 'Moteris' 3 'Kita'
   /education 1 'Pagrindinis' 2 'Vidurinis' 3 'Profesinis' 4 'Aukštasis koleginis (profesinis bakalauras)'
     5 'Aukštasis universitetinis (bakalauras)' 6 'Aukštasis universitetinis (magistras)' 7 'Mokslų daktaras'
@@ -261,7 +292,7 @@ VALUE LABELS
 
 VARIABLE LEVEL
   condition condition_source same_sequence end_reason gender education (NOMINAL)
-  /pgsi_1 TO pgsi_9 pilot_clarity pilot_questionnaires pilot_game
+  /pgsi_1 pgsi_2 pgsi_3 pgsi_4 pgsi_5 pgsi_6 pgsi_7 pgsi_8 pgsi_9 pilot_clarity pilot_questionnaires pilot_game
    sam_pre_valence sam_pre_arousal sam_pre_dominance sam_post_valence sam_post_arousal sam_post_dominance (ORDINAL).
 
 * Derived variables: PGSI risk category (standard cut-offs) and SAM change (after - before).
