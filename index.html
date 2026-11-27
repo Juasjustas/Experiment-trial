@@ -373,6 +373,8 @@ function spinPlan(i){
 
 /* ---------- state + logging ---------- */
 const P = params();
+// "2026-11-27 18:03:47" in the participant's own (local) time.
+function localStamp(d){ const z = n => String(n).padStart(2,"0"); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; }
 const S = {
   pid: P.get("pid") || P.get("PROLIFIC_PID") || ("p" + Date.now().toString(36) + Math.random().toString(36).slice(2,6)),
   cond: null, seed: CONFIG.SAME_SEQUENCE_FOR_ALL ? CONFIG.SEED : Math.floor(Math.random()*2**31),
@@ -381,7 +383,7 @@ const S = {
   spinning:false, ended:false, t0:null, lastReveal:null, outAt:null,
   hiddenMs:0, hiddenAt:null, firstWithdrawSpin:null, latencies:[], drops:[],
   events:[], startedAt:null, endReason:null, code:makeCode(), pendingEnd:null,
-  studyT0:performance.now(), screen:"consent", lastAct:performance.now(), inactive:[], saving:false,
+  studyT0:performance.now(), studyStartedAt:localStamp(new Date()), screen:"consent", lastAct:performance.now(), inactive:[], saving:false,
   gameMs:null, endedAt:null, pgsi:null, pgsiMs:null, demo:null, demoMs:null, pilot:null, pilotMs:null, sam:{pre:null, post:null}, samMs:{pre:null, post:null},
 };
 const rarityShown = () => S.cond==="skins";
@@ -390,15 +392,12 @@ const sellMode = () => CONFIG.SKINS_MODE==="sell";
 const now = () => Math.round(performance.now() - S.t0);
 const studyMs = (t = performance.now()) => Math.round(t - S.studyT0);
 const condCode = c => CONDS.indexOf(c) + 1 || "";   // 1 = skins, 2 = plain
-const END_CODES = {stopped:1, time_limit:2, max_spins:3};
 
 // Text versions of the coded answers. Each coded column gets a "<name>_text" column right after it in the data,
 // so the files carry both the number (for analysis) and the answer as shown to the participant.
 const PGSI_TEXT = Object.fromEntries(PGSI.options.map((o,v) => [v, o]));
 const TEXT = {
   condition: {1:"Skins (rarity shown)", 2:"Plain skins (no rarity)"},
-  condition_source: {1:"Assigned automatically", 2:"Chosen on the test picker"},
-  end_reason: {1:"Stopped by participant", 2:"Time limit", 3:"Case limit"},
   gender: {1:"Vyras", 2:"Moteris", 3:"Kita"},
   education: Object.fromEntries(EDUCATION.map((e,i) => [i+1, e])),
   ...Object.fromEntries(PGSI.items.map((_,i) => [`pgsi_${i+1}`, PGSI_TEXT])),
@@ -467,7 +466,6 @@ function screenConsent(){
   agree.onchange = () => go.disabled = !agree.checked;
   go.onclick = async () => {
     go.disabled = true; go.textContent = "Kraunama…";
-    S.condSource = PICKER && picked!=="random" ? "picker" : "assigned";
     S.cond = await assignCondition(PICKER ? picked : null);
     screenQuestionnaire();
   };
@@ -761,30 +759,15 @@ function askStop(){
 
 /* ---------- end + data ---------- */
 function summary(){
-  const lat = S.latencies.slice(1);
-  const mean = lat.length ? Math.round(lat.reduce((a,b)=>a+b,0)/lat.length) : "";
   return withText({
-    pid:S.pid, condition:condCode(S.cond), condition_source:S.condSource==="picker" ? 2 : 1, skins_mode:CONFIG.SKINS_MODE,
-    seed:S.seed, same_sequence:CONFIG.SAME_SEQUENCE_FOR_ALL ? 1 : 0,
-    started_at:S.startedAt, ended_at:S.endedAt, end_reason:END_CODES[S.endReason],
-    game_duration_s:(S.gameMs/1000).toFixed(1), time_tab_hidden_s:(S.hiddenMs/1000).toFixed(1),
-    n_spins:S.spins, n_withdrawals:S.withdrawals, total_withdrawn:S.withdrawn,
-    spins_after_first_withdrawal: S.firstWithdrawSpin===null ? 0 : S.spins - S.firstWithdrawSpin,
-    n_sold:S.sold, coins_from_sales:S.soldValue, items_kept:S.inventory.length, value_kept:invValue(),
-    total_spent:S.spent, coins_received:S.won, final_balance:S.balance,
-    net_result:S.balance + invValue() - CONFIG.START_BALANCE - S.withdrawn,
-    mean_post_outcome_pause_ms:mean, start_balance:CONFIG.START_BALANCE, spin_cost:CONFIG.SPIN_COST,
-    withdraw_amount:CONFIG.WITHDRAW_AMOUNT,
-    ...Object.fromEntries(S.pgsi.map((v,i)=>[`pgsi_${i+1}`, v])),
-    pgsi_total:S.pgsi.reduce((a,b)=>a+b,0), questionnaire_duration_s:(S.pgsiMs/1000).toFixed(1),
-    gender:S.demo.gender, age:S.demo.age, education:S.demo.education, demographics_duration_s:(S.demoMs/1000).toFixed(1),
-    ...Object.fromEntries(PILOT.items.flatMap(q => [[`pilot_${q.id}`, S.pilot ? S.pilot[`pilot_${q.id}`] : ""], [`pilot_${q.id}_comment`, S.pilot ? S.pilot[`pilot_${q.id}_comment`] : ""]])),
-    pilot_duration_s: S.pilot ? (S.pilotMs/1000).toFixed(1) : "",
+    pid:S.pid, condition:condCode(S.cond), started_at:S.studyStartedAt,
+    study_duration_s:(studyMs()/1000).toFixed(1), game_duration_s:(S.gameMs/1000).toFixed(1), n_spins:S.spins,
     inactive_n:S.inactive.length, inactive_total_s:(S.inactive.reduce((a,x)=>a+x.ms,0)/1000).toFixed(1),
-    inactive_game_n:S.inactive.filter(x=>x.game).length, inactive_game_s:(S.inactive.filter(x=>x.game).reduce((a,x)=>a+x.ms,0)/1000).toFixed(1),
-    study_duration_s:(studyMs()/1000).toFixed(1),
-    ...Object.fromEntries(["pre","post"].flatMap(ph => [...SAM.scales.map(sc => [`sam_${ph}_${sc.id}`, S.sam[ph][sc.id]]), [`sam_${ph}_duration_s`, (S.samMs[ph]/1000).toFixed(1)]])),
-    completed_at:new Date().toISOString(), completion_code:S.code,
+    ...Object.fromEntries(S.pgsi.map((v,i)=>[`pgsi_${i+1}`, v])), pgsi_total:S.pgsi.reduce((a,b)=>a+b,0),
+    ...Object.fromEntries(["pre","post"].flatMap(ph => SAM.scales.map(sc => [`sam_${ph}_${sc.id}`, S.sam[ph][sc.id]]))),
+    gender:S.demo.gender, age:S.demo.age, education:S.demo.education,
+    ...Object.fromEntries(PILOT.items.flatMap(q => [[`pilot_${q.id}`, S.pilot ? S.pilot[`pilot_${q.id}`] : ""], [`pilot_${q.id}_comment`, S.pilot ? S.pilot[`pilot_${q.id}_comment`] : ""]])),
+    completion_code:S.code,
   });
 }
 function toCSV(rows, cols){
@@ -1020,7 +1003,7 @@ async function finishStudy(){
 }
 
 function researcherPanel(sum, eventsCSV, summaryCSV){
-  const keys = ["condition","skins_mode","end_reason","game_duration_s","pgsi_total","questionnaire_duration_s","sam_pre_valence","sam_pre_arousal","sam_pre_dominance","sam_post_valence","sam_post_arousal","sam_post_dominance","gender","age","education","inactive_n","inactive_total_s","pilot_clarity","pilot_questionnaires","pilot_game","time_tab_hidden_s","n_spins","n_withdrawals","total_withdrawn","spins_after_first_withdrawal","n_sold","coins_from_sales","items_kept","value_kept","total_spent","final_balance","net_result","mean_post_outcome_pause_ms"];
+  const keys = ["condition","started_at","study_duration_s","game_duration_s","n_spins","inactive_n","inactive_total_s","pgsi_total","sam_pre_valence","sam_pre_arousal","sam_pre_dominance","sam_post_valence","sam_post_arousal","sam_post_dominance","gender","age","education","pilot_clarity","pilot_questionnaires","pilot_game"];
   return `<div class="card">
     <span class="eyebrow">Researcher view · demo only</span>
     <h2>Recorded data for this session</h2>
