@@ -214,6 +214,10 @@ const CONFIG = {
   DATAPIPE_ID: "tG82musgz2sa",
   // Optional: send participants on to another page after saving. pid, cond and code are appended.
   REDIRECT_URL: "",
+  // Optional backup: the summary row is also added to a Google Sheet (see analysis/google_sheets_backup.gs).
+  // Empty = off. DataPipe stays the main data store; the backup never delays the participant.
+  SHEETS_URL: "",
+  SHEETS_TOKEN: "ELFrAEXK2k0-uuWG",   // must match TOKEN in the Apps Script
 
   STUDY_TITLE: "Įsitraukimas į šanso žaidimus: retumo įtaka, sąsajos su probleminiu lošimu ir subjektyviu susijaudinimu",
   // First-screen text, one string per paragraph (the pilot wording; update it for the main study).
@@ -789,6 +793,12 @@ function toCSV(rows, cols){
   const q = v => { if(v===undefined||v===null) return ""; const t = String(v).replace(/[\r\n]+/g, " "); return /[",]/.test(t) ? `"${t.replace(/"/g,'""')}"` : t; };
   return [cols.join(","), ...rows.map(r => cols.map(c=>q(r[c])).join(","))].join("\n");
 }
+// Fire-and-forget copy to Google Sheets. text/plain avoids a CORS preflight, which Apps Script cannot answer.
+function sendToSheets(row){
+  if(!CONFIG.SHEETS_URL) return;
+  fetch(CONFIG.SHEETS_URL, {method:"POST", mode:"no-cors", keepalive:true, headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify({token:CONFIG.SHEETS_TOKEN, row})}).catch(e => console.warn("Sheets backup failed:", e));
+}
 async function saveFile(filename, data){
   const r = await fetch("https://pipe.jspsych.org/api/data/", {method:"POST", headers:{"Content-Type":"application/json", Accept:"*/*"}, body:JSON.stringify({experimentID:CONFIG.DATAPIPE_ID, filename, data})});
   if(!r.ok){
@@ -967,6 +977,7 @@ async function finishStudy(){
   S.events.forEach(e => { e.condition = condCode(S.cond); e.condition_text = TEXT.condition[e.condition] ?? ""; });   // events logged before group assignment get the group too
   const sum = summary();
   const eventsCSV = toCSV(S.events, EVENT_COLS), summaryCSV = toCSV([sum]);
+  if(!DEMO) sendToSheets(sum);
 
   app.className = "wrap";
   window.scrollTo(0, 0);
