@@ -80,6 +80,7 @@
   .excl{display:inline-flex; align-items:center; gap:6px; font-size:.88rem; color:var(--text); background:color-mix(in srgb, var(--t) 16%, transparent); border:1px solid color-mix(in srgb, var(--t) 45%, transparent); border-radius:999px; padding:3px 10px; width:fit-content}
   .excl b{font-family:var(--mono); color:var(--t)}
   .placeholder{color:var(--muted)}
+  a{color:var(--go)}
   .drops{display:flex; gap:6px; flex-wrap:wrap}
   .drop{width:46px; height:46px; border-radius:6px; background:var(--panel-2); border-bottom:3px solid var(--t); display:grid; place-items:center}
   .drop svg.av{width:38px; height:38px}
@@ -199,7 +200,7 @@ const CONFIG = {
 
   // Show a "choose the game type" picker on the first screen (for testing and demos).
   // SET TO false FOR THE REAL STUDY so participants are assigned to groups automatically.
-  SHOW_GROUP_PICKER: true,
+  SHOW_GROUP_PICKER: false,
 
   // Inactivity: a pause of at least this many seconds with no click, key press, typing, touch or scroll is
   // logged (from the last action to the next one) as an "inactivity" event, on every screen of the study.
@@ -209,7 +210,7 @@ const CONFIG = {
   SHOW_PILOT: true,
 
   // Data saving. Leave DATAPIPE_ID empty to run in demo mode (data shown on screen, nothing sent).
-  // With an ID from pipe.jspsych.org, data is saved to your OSF project and groups are balanced
+  // With an ID from pipe.jspsych.org, data is saved to the storage linked there (here: Google Drive, My Drive/DataPipe) and groups are balanced
   // (set "Number of conditions" to 2 in the DataPipe dashboard).
   DATAPIPE_ID: "tG82musgz2sa",
   // Optional: send participants on to another page after saving. pid, cond and code are appended.
@@ -226,7 +227,8 @@ const CONFIG = {
     "Aš esu Justas Ašmonas, esu psichologijos 4 kurso studentas ir smagu, kad nusprendei prisidėti prie mano bakalauro projekto. Šiuo metu tai tik pilotinis tyrimas, skirtas pratestuoti klausimus ir jų kokybę. Šis tyrimas susideda iš kelių klausimynų ir žaidimo. Svarbu – žaidimą žaisk tiek, kiek nori, nėra jokio laiko limito, taigi tyrimo trukmė priklauso nuo tavęs. Daugiau informacijos apie šį tyrimą gali atrasti jo pabaigoje.",
   ],
   CONTACT: "justas.asmonas@fsf.stud.vu.lt",
-  HELP_TEXT: "Jei lošimas kelia problemų Jums ar Jūsų artimiesiems, galite nemokamai ir konfidencialiai kreiptis pagalbos: [įrašykite pagalbos lošėjams linijos kontaktus].",
+  HELP_TEXT: "Jei lošimas kelia problemų Jums ar Jūsų artimiesiems, galite nemokamai ir konfidencialiai kreiptis pagalbos:",
+  HELP_URL: "https://nebenoriu-losti.lt/",
 };
 
 const TIERS = [
@@ -978,7 +980,7 @@ async function finishStudy(){
       <p>Buvote priskirti vienai iš dviejų grupių. Abiejų grupių dalyviai laimėdavo tuos pačius kolekcionuojamus avatarus, tačiau tik viena grupė matė, kokie reti yra avatarai. Kiekvieno rezultato tikimybės abiejose grupėse buvo visiškai vienodos. Norime išsiaiškinti, ar informacija apie laimikio retumą turi įtakos tam, kiek ilgai žmonės žaidžia ir kaip dažnai pasiima papildomų monetų.</p>
       ${rarityShown() ? `<p>Skaičiai „% žaidėjų gavo šį avatarą“ nebuvo tikrų žaidėjų skaičiai. Tai buvo iš anksto nustatytos kiekvieno rezultato tikimybės, kurias tyrėjas parinko, kad reti avatarai atrodytų išskirtiniai.</p>` : ""}
       <p>Žaidimas buvo sukurtas taip, kad vidutiniškai kiekviena dėžė grąžintų mažiau, nei kainavo (apie 96 monetas už kiekvieną išleistą 100 monetų), kaip ir tikruose lošimuose. Ilgainiui žaidėjas visada pralošia. Niekas, ką laimėjote ar praradote, nebuvo tikra.</p>
-      <p>${esc(CONFIG.HELP_TEXT)}</p>
+      <p>${esc(CONFIG.HELP_TEXT)} <a href="${esc(CONFIG.HELP_URL)}" target="_blank" rel="noopener">${esc(CONFIG.HELP_URL.replace(/^https?:\/\/|\/$/g, ""))}</a></p>
       <p>Jei turite klausimų arba norite, kad Jūsų duomenys būtų pašalinti, rašykite <span class="num">${esc(CONFIG.CONTACT)}</span> ir nurodykite savo užbaigimo kodą.</p>
     </div>
     ${DEMO ? researcherPanel(sum, eventsCSV, summaryCSV) : ""}`;
