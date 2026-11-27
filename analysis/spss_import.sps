@@ -118,33 +118,12 @@ GET DATA
     pid A40
     condition F1.0
     condition_text A40
-    condition_source F1.0
-    condition_source_text A40
-    skins_mode A4
-    seed F10.0
-    same_sequence F1.0
-    started_at A24
-    ended_at A24
-    end_reason F1.0
-    end_reason_text A30
+    started_at A19
+    study_duration_s F10.1
     game_duration_s F10.1
-    time_tab_hidden_s F10.1
     n_spins F6.0
-    n_withdrawals F4.0
-    total_withdrawn F8.0
-    spins_after_first_withdrawal F6.0
-    n_sold F6.0
-    coins_from_sales F8.0
-    items_kept F6.0
-    value_kept F8.0
-    total_spent F8.0
-    coins_received F8.0
-    final_balance F8.0
-    net_result F8.0
-    mean_post_outcome_pause_ms F10.0
-    start_balance F6.0
-    spin_cost F6.0
-    withdraw_amount F6.0
+    inactive_n F4.0
+    inactive_total_s F10.1
     pgsi_1 F1.0
     pgsi_1_text A30
     pgsi_2 F1.0
@@ -164,34 +143,23 @@ GET DATA
     pgsi_9 F1.0
     pgsi_9_text A30
     pgsi_total F2.0
-    questionnaire_duration_s F10.1
+    sam_pre_valence F1.0
+    sam_pre_arousal F1.0
+    sam_pre_dominance F1.0
+    sam_post_valence F1.0
+    sam_post_arousal F1.0
+    sam_post_dominance F1.0
     gender F1.0
     gender_text A20
     age F3.0
     education F1.0
     education_text A100
-    demographics_duration_s F10.1
     pilot_clarity F1.0
     pilot_clarity_comment A4000
     pilot_questionnaires F1.0
     pilot_questionnaires_comment A4000
     pilot_game F1.0
     pilot_game_comment A4000
-    pilot_duration_s F10.1
-    inactive_n F4.0
-    inactive_total_s F10.1
-    inactive_game_n F4.0
-    inactive_game_s F10.1
-    study_duration_s F10.1
-    sam_pre_valence F1.0
-    sam_pre_arousal F1.0
-    sam_pre_dominance F1.0
-    sam_pre_duration_s F10.1
-    sam_post_valence F1.0
-    sam_post_arousal F1.0
-    sam_post_dominance F1.0
-    sam_post_duration_s F10.1
-    completed_at A24
     completion_code A6.
 EXECUTE.
 DATASET NAME summary WINDOW=FRONT.
@@ -200,33 +168,12 @@ VARIABLE LABELS
   pid 'Participant ID'
   condition 'Group'
   condition_text 'Group (text)'
-  condition_source 'How the group was set'
-  condition_source_text 'How the group was set (text)'
-  skins_mode 'Skin mode (auto = value added to balance, sell = inventory)'
-  seed 'Outcome sequence seed'
-  same_sequence 'Same outcome sequence for everyone'
-  started_at 'Game start (UTC, ISO 8601)'
-  ended_at 'Game end (UTC, ISO 8601)'
-  end_reason 'How the game ended'
-  end_reason_text 'How the game ended (text)'
+  started_at 'Study start (participant local time)'
+  study_duration_s 'Whole study duration (s)'
   game_duration_s 'Game duration (s)'
-  time_tab_hidden_s 'Time the tab was hidden during the game (s)'
-  n_spins 'Cases opened'
-  n_withdrawals 'Number of withdrawals'
-  total_withdrawn 'Coins withdrawn in total'
-  spins_after_first_withdrawal 'Cases opened after the first withdrawal'
-  n_sold 'Avatars sold (sell mode only)'
-  coins_from_sales 'Coins from sales (sell mode only)'
-  items_kept 'Avatars kept at the end (sell mode only)'
-  value_kept 'Value of avatars kept (sell mode only)'
-  total_spent 'Coins spent on cases'
-  coins_received 'Coins received from cases and sales'
-  final_balance 'Coin balance at the end'
-  net_result 'Net result (final balance + kept value - start - withdrawn)'
-  mean_post_outcome_pause_ms 'Mean pause between a result and the next case (ms)'
-  start_balance 'Starting coins'
-  spin_cost 'Cost of one case'
-  withdraw_amount 'Coins per withdrawal'
+  n_spins 'Cases opened (presses of the open-case button)'
+  inactive_n 'Inactivity periods (1 min or more), whole study'
+  inactive_total_s 'Total inactive time, whole study (s)'
   pgsi_1 'PGSI 1: bet more than could afford to lose'
   pgsi_1_text 'PGSI 1: bet more than could afford to lose (text)'
   pgsi_2 'PGSI 2: needed larger amounts for the same excitement'
@@ -246,41 +193,27 @@ VARIABLE LABELS
   pgsi_9 'PGSI 9: felt guilty about gambling'
   pgsi_9_text 'PGSI 9: felt guilty about gambling (text)'
   pgsi_total 'PGSI total (0-27)'
-  questionnaire_duration_s 'PGSI completion time (s)'
+  sam_pre_valence 'SAM before game: valence (1-9)'
+  sam_pre_arousal 'SAM before game: arousal (1-9)'
+  sam_pre_dominance 'SAM before game: dominance (1-9)'
+  sam_post_valence 'SAM after game: valence (1-9)'
+  sam_post_arousal 'SAM after game: arousal (1-9)'
+  sam_post_dominance 'SAM after game: dominance (1-9)'
   gender 'Lytis'
   gender_text 'Lytis (text)'
   age 'Amžius'
   education 'Išsilavinimo lygis'
   education_text 'Išsilavinimo lygis (text)'
-  demographics_duration_s 'Demographics completion time (s)'
   pilot_clarity 'Pilot: test clarity (1-5)'
   pilot_clarity_comment 'Pilot: comment on clarity'
   pilot_questionnaires 'Pilot: questionnaires (1-5)'
   pilot_questionnaires_comment 'Pilot: comment on questionnaires'
   pilot_game 'Pilot: chance game (1-5)'
   pilot_game_comment 'Pilot: comment on the game'
-  pilot_duration_s 'Pilot questions completion time (s)'
-  inactive_n 'Inactivity periods (1 min or more), whole study'
-  inactive_total_s 'Total inactive time, whole study (s)'
-  inactive_game_n 'Inactivity periods during the game'
-  inactive_game_s 'Total inactive time during the game (s)'
-  study_duration_s 'Whole study duration until saving (s)'
-  sam_pre_valence 'SAM before game: valence (1-9)'
-  sam_pre_arousal 'SAM before game: arousal (1-9)'
-  sam_pre_dominance 'SAM before game: dominance (1-9)'
-  sam_pre_duration_s 'SAM before game completion time (s)'
-  sam_post_valence 'SAM after game: valence (1-9)'
-  sam_post_arousal 'SAM after game: arousal (1-9)'
-  sam_post_dominance 'SAM after game: dominance (1-9)'
-  sam_post_duration_s 'SAM after game completion time (s)'
-  completed_at 'Study completed (UTC, ISO 8601)'
   completion_code 'Completion code'.
 
 VALUE LABELS
   condition 1 'Skins (rarity shown)' 2 'Plain skins (no rarity)'
-  /condition_source 1 'Assigned automatically' 2 'Chosen on the test picker'
-  /same_sequence 0 'No' 1 'Yes'
-  /end_reason 1 'Stopped by participant' 2 'Time limit' 3 'Case limit'
   /pgsi_1 pgsi_2 pgsi_3 pgsi_4 pgsi_5 pgsi_6 pgsi_7 pgsi_8 pgsi_9 0 'Niekada' 1 'Kartais' 2 'Dažnai' 3 'Beveik visada'
   /gender 1 'Vyras' 2 'Moteris' 3 'Kita'
   /education 1 'Pagrindinis' 2 'Vidurinis' 3 'Profesinis' 4 'Aukštasis koleginis (profesinis bakalauras)'
@@ -291,7 +224,7 @@ VALUE LABELS
   /sam_pre_dominance sam_post_dominance 1 'Controlled' 9 'In control'.
 
 VARIABLE LEVEL
-  condition condition_source same_sequence end_reason gender education (NOMINAL)
+  condition gender education (NOMINAL)
   /pgsi_1 pgsi_2 pgsi_3 pgsi_4 pgsi_5 pgsi_6 pgsi_7 pgsi_8 pgsi_9 pilot_clarity pilot_questionnaires pilot_game
    sam_pre_valence sam_pre_arousal sam_pre_dominance sam_post_valence sam_post_arousal sam_post_dominance (ORDINAL).
 
