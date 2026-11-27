@@ -1,6 +1,6 @@
 * Encoding: UTF-8.
 * Import the study data into SPSS.
-* 1) Download the participant files from OSF (DataPipe saves two per person).
+* 1) Download the participant files: Google Drive, folder DataPipe (right-click > Download gives a .zip; two files per person).
 * 2) Merge them with analysis/combine.html into summary_all.csv and events_all.csv.
 * 3) Put both files in one folder, change the CD line below to that folder, then run this whole file (Run > All).
 * Result: dataset "summary" (one row per participant) and dataset "events" (one row per logged action),

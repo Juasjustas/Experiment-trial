@@ -1,4 +1,4 @@
-// Google Sheets backup copy of each participant's summary row (DataPipe/OSF stays the main data store).
+// Google Sheets backup copy of each participant's summary row (the DataPipe files in Google Drive stay the main data store).
 //
 // Setup (once):
 //   1. Create an empty Google Sheet. Extensions > Apps Script. Replace everything there with this file. Save.
