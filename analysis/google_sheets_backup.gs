@@ -8,9 +8,10 @@
 // page source can see it, so check the sheet for odd rows before analysis.
 // Every value is stored as plain text so Sheets never turns numbers into dates or changes decimals.
 // After editing this script, use Deploy > Manage deployments > Edit > New version (the URL stays the same).
+// To check the setup from the editor: choose testSetup in the function list and press Run; see the log below.
 
-const TOKEN = "ELFrAEXK2k0-uuWG";
-const SHEET_NAME = "summary";
+var TOKEN = "ELFrAEXK2k0-uuWG";   // var, not const: a second pasted copy in the project then still loads
+var SHEET_NAME = "summary";
 
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -54,4 +55,11 @@ function asText(v) {
 
 function reply(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// Run from the editor: writes one row with pid EDITOR_TEST to the "summary" tab and logs the reply.
+// Delete that row afterwards.
+function testSetup() {
+  const res = doPost({postData: {contents: JSON.stringify({token: TOKEN, row: {pid: "EDITOR_TEST", note: "test from the editor"}})}});
+  Logger.log(res.getContent());
 }
