@@ -65,9 +65,9 @@
   .reel::before,.reel::after{content:""; position:absolute; top:0; bottom:0; width:60px; z-index:1; pointer-events:none}
   .reel::before{left:0; background:linear-gradient(90deg,#0b0e14,transparent)}
   .reel::after{right:0; background:linear-gradient(270deg,#0b0e14,transparent)}
-  .cell{flex:0 0 var(--cw); height:var(--ch); border-radius:6px; background:linear-gradient(180deg,var(--panel-2) 30%, color-mix(in srgb, var(--t) 28%, var(--panel-2))); border-bottom:4px solid var(--t); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:6px}
+  .cell{flex:0 0 var(--cw); min-width:0; overflow:hidden; height:var(--ch); border-radius:6px; background:linear-gradient(180deg,var(--panel-2) 30%, color-mix(in srgb, var(--t) 28%, var(--panel-2))); border-bottom:4px solid var(--t); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:6px}
   .cell svg.av{width:78px; height:78px}
-  .cell .nm{font-size:.7rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
+  .cell .nm{font-size:.7rem; line-height:1.2; color:var(--muted); text-align:center; max-width:100%; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical}
   .controls{display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:center}
   .withdraw{display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center}
   .withdraw .hint{color:var(--muted); font-size:.88rem}
@@ -162,7 +162,7 @@
     h1{font-size:1.55rem}
     .reveal{grid-template-columns:1fr; justify-items:start}
     .card{padding:18px}
-    .q-opts{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .q-opts label{font-size:.8rem; padding-inline:3px}
     .q:has(.sam){padding:12px 8px}
     .sam .fig{margin-inline:-8px; padding:2px}  /* let figures use the empty space above the in-between points */
   }
@@ -645,11 +645,12 @@ function renderStrip(cells, animate){
   const strip = $("#strip");
   strip.style.transition = "none"; strip.style.transform = "translateX(0)";
   strip.innerHTML = cells.map(i => cellHTML(itemFor(i))).join("");
-  if(!animate){
-    const cw = strip.firstElementChild.getBoundingClientRect().width + 6;
-    const w = strip.parentElement.clientWidth;
-    strip.style.transform = `translateX(${-(10*cw + cw/2 - w/2)}px)`;
-  }
+  if(!animate) strip.style.transform = `translateX(${-centerOn(strip.children[10])}px)`;
+}
+// Distance to move the strip so the middle of `cell` (plus an offset) sits under the marker.
+// Measured from the cell itself, so it stays right even if cells differ in width.
+function centerOn(cell, offset=0){
+  return cell.offsetLeft + cell.offsetWidth/2 + offset - cell.parentElement.parentElement.clientWidth/2;
 }
 
 function renderReveal(it){
@@ -704,9 +705,8 @@ function spin(){
 
   renderStrip(plan.cells, true);
   const strip = $("#strip");
-  const cw = strip.firstElementChild.getBoundingClientRect().width + 6;
-  const w = strip.parentElement.clientWidth;
-  const x = -(WIN_INDEX*cw + cw/2 + plan.jitter*(cw-6) - w/2);
+  const win = strip.children[WIN_INDEX];
+  const x = -centerOn(win, plan.jitter*win.offsetWidth);
   strip.getBoundingClientRect();
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   strip.style.transition = `transform ${reduce?600:SPIN_MS}ms cubic-bezier(.1,.75,.18,1)`;
