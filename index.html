@@ -227,7 +227,7 @@ const CONFIG = {
     "Aš esu Justas Ašmonas, esu psichologijos 4 kurso studentas ir smagu, kad nusprendei prisidėti prie mano bakalauro projekto. Šiuo metu tai tik pilotinis tyrimas, skirtas pratestuoti klausimus ir jų kokybę. Šis tyrimas susideda iš kelių klausimynų ir žaidimo. Svarbu – žaidimą žaisk tiek, kiek nori, nėra jokio laiko limito, taigi tyrimo trukmė priklauso nuo tavęs. Daugiau informacijos apie šį tyrimą gali atrasti jo pabaigoje.",
   ],
   CONTACT: "justas.asmonas@fsf.stud.vu.lt",
-  HELP_TEXT: "Jei lošimas kelia problemų Jums ar Jūsų artimiesiems, galite nemokamai ir konfidencialiai kreiptis pagalbos:",
+  HELP_TEXT: "Jei lošimas kelia problemų tau ar tavo artimiesiems, gali nemokamai ir konfidencialiai kreiptis pagalbos:",
   HELP_URL: "https://nebenoriu-losti.lt/",
 };
 
@@ -264,7 +264,7 @@ const ITEMS = [
 // Figures are the paper-and-pencil SAM from the IAPS technical manual (sam/*.png), in its left-to-right order. `scores` gives the 1-9 value of each of the
 // 9 points from left to right, so 9 always means more pleasure / more arousal / more control.
 const SAM = {
-  intro: "Kiekvienoje eilutėje pasirinkite paveikslėlį arba tašką tarp dviejų paveikslėlių, kuris geriausiai atspindi, kaip jaučiatės šiuo metu.",
+  intro: "Kiekvienoje eilutėje pasirink paveikslėlį arba tašką tarp dviejų paveikslėlių, kuris geriausiai atspindi, kaip jautiesi šiuo metu.",
   scales: [
     {id:"valence",   title:"Valentingumas", left:"Laimingas(-a), patenkintas(-a), viltingas(-a)",  right:"Nelaimingas(-a), susierzinęs(-usi), nusivylęs(-usi)", scores:[9,8,7,6,5,4,3,2,1]},
     {id:"arousal",   title:"Sužadinimas",    left:"Susijaudinęs(-usi), budrus(-i), įsitempęs(-usi)", right:"Ramus(-i), atsipalaidavęs(-usi), mieguistas(-a)",    scores:[9,8,7,6,5,4,3,2,1]},
@@ -288,9 +288,9 @@ const PILOT = {
   scale: ["1", "2", "3", "4", "5"], low: "Labai prastai", high: "Labai gerai",
   comment: "Papildomas komentaras:",
   items: [
-    {id:"clarity",        text:"Kaip įvertintumėte testo aiškumą?"},
-    {id:"questionnaires", text:"Kaip įvertintumėte anketinius klausimus?"},
-    {id:"game",           text:"Kaip įvertintumėte šanso žaidimą?"},
+    {id:"clarity",        text:"Kaip įvertintum testo aiškumą?"},
+    {id:"questionnaires", text:"Kaip įvertintum anketinius klausimus?"},
+    {id:"game",           text:"Kaip įvertintum šanso žaidimą?"},
   ],
 };
 
@@ -491,18 +491,18 @@ function screenSAM(phase, next){
   S.screen = "sam_" + phase;
   const shownAt = performance.now();
   const r = S.endReason;
-  const reasonText = r==="time_limit" ? "Žaidimo laikas baigėsi." : r==="max_spins" ? "Pasiekėte didžiausią leistiną dėžių skaičių." : "Žaidimą baigėte.";
+  const reasonText = r==="time_limit" ? "Žaidimo laikas baigėsi." : r==="max_spins" ? "Pasiekei didžiausią leistiną dėžių skaičių." : "Žaidimą baigei.";
   app.className = "wrap";
   app.innerHTML = `
     ${phase==="post" ? `<div class="card">
       <span class="eyebrow">Žaidimas baigtas</span>
       <h1>${reasonText}</h1>
-      <p>Kad užbaigtumėte tyrimą, dar kartą įvertinkite savo savijautą.</p>
+      <p>Kad užbaigtum tyrimą, dar kartą įvertink savo savijautą.</p>
     </div>` : ""}
     <form class="card" id="sam" novalidate>
       <div class="stack">
         <span class="eyebrow">${phase==="pre" ? "Prieš žaidimą" : "Po žaidimo"}</span>
-        <h2>Kaip jaučiatės šiuo metu?</h2>
+        <h2>Kaip jautiesi šiuo metu?</h2>
         <p>${esc(SAM.intro)}</p>
       </div>
       <div class="q-list">
@@ -529,7 +529,7 @@ function screenSAM(phase, next){
     const f = e.target.closest(".q"); if(!f) return;
     f.classList.remove("missing"); mark(f);
     const left = form.querySelectorAll(".q.missing").length;
-    err.hidden = !left; err.textContent = `Atsakykite į visus klausimus (liko neatsakytų: ${left}).`;
+    err.hidden = !left; err.textContent = `Atsakyk į visus klausimus (liko neatsakytų: ${left}).`;
   };
   form.onsubmit = e => {
     e.preventDefault();
@@ -538,7 +538,7 @@ function screenSAM(phase, next){
     form.querySelectorAll(".q").forEach((f,i) => f.classList.toggle("missing", missing.includes(i)));
     if(missing.length){
       err.hidden = false;
-      err.textContent = `Atsakykite į visus klausimus (liko neatsakytų: ${missing.length}).`;
+      err.textContent = `Atsakyk į visus klausimus (liko neatsakytų: ${missing.length}).`;
       $("#s"+(missing[0]+1)).scrollIntoView({behavior:"smooth", block:"center"});
       return;
     }
@@ -553,17 +553,17 @@ function screenInstructions(){
   S.screen = "instructions";
   const plain = S.cond==="plain";
   const rarer = plain ? "" : " Retesni avatarai yra vertingesni.";
-  const rule = sellMode() ? "Kiekvienoje dėžėje yra avataras, kuris patenka į Jūsų inventorių. Bet kurį avatarą galite parduoti už monetas." + rarer
-    : "Kiekvienoje dėžėje yra avataras. Jo vertė monetomis pridedama prie Jūsų balanso." + rarer;
+  const rule = sellMode() ? "Kiekvienoje dėžėje yra avataras, kuris patenka į tavo inventorių. Bet kurį avatarą gali parduoti už monetas." + rarer
+    : "Kiekvienoje dėžėje yra avataras. Jo vertė monetomis pridedama prie tavo balanso." + rarer;
   app.innerHTML = `
     <div class="card">
       <span class="eyebrow">Kaip tai veikia</span>
-      <h1>Atidarykite dėžes savo monetomis</h1>
+      <h1>Atidaryk dėžes savo monetomis</h1>
       <ul>
-        <li>Pradžioje turite <strong>${coins(CONFIG.START_BALANCE)}</strong>. Vienos dėžės atidarymas kainuoja <strong>${coins(CONFIG.SPIN_COST)}</strong>.</li>
+        <li>Pradžioje turi <strong>${coins(CONFIG.START_BALANCE)}</strong>. Vienos dėžės atidarymas kainuoja <strong>${coins(CONFIG.SPIN_COST)}</strong>.</li>
         <li>${rule}</li>
-        <li>Jei pritrūksite monetų, galėsite pasiimti daugiau ir žaisti toliau.</li>
-        <li>Žaiskite tiek, kiek norite. Kai norėsite baigti, paspauskite <em>Baigti žaidimą</em>.</li>
+        <li>Jei pritrūksi monetų, galėsi pasiimti daugiau ir žaisti toliau.</li>
+        <li>Žaisk tiek, kiek nori. Kai norėsi baigti, paspausk <em>Baigti žaidimą</em>.</li>
       </ul>
       ${plain ? "" : `<div class="row">${TIERS.map(t=>`<span class="tier" style="--t:${t.color}">${t.label}</span>`).join('<span class="placeholder">·</span>')}</div>`}
       <div class="row"><button class="btn-go" id="start">Pradėti žaidimą</button></div>
@@ -624,7 +624,7 @@ function renderControls(){
   const c = $("#controls"); if(!c) return;
   const canAfford = S.balance >= CONFIG.SPIN_COST;
   const canWithdraw = CONFIG.MAX_WITHDRAWALS===null || S.withdrawals < CONFIG.MAX_WITHDRAWALS;
-  const sellHint = sellMode() && S.inventory.length ? `<span class="hint">Taip pat galite parduoti avatarus iš savo inventoriaus žemiau.</span>` : "";
+  const sellHint = sellMode() && S.inventory.length ? `<span class="hint">Taip pat gali parduoti avatarus iš savo inventoriaus žemiau.</span>` : "";
   if(canAfford || S.spinning){
     S.outAt = null;
     c.innerHTML = `<button class="btn-primary" id="spin" ${S.spinning?"disabled":""}>Atidaryti dėžę · <span class="num">${fmt(CONFIG.SPIN_COST)}</span></button>`;
@@ -637,7 +637,7 @@ function renderControls(){
       <button class="btn-primary" id="wd">Pasiimti dar ${coins(CONFIG.WITHDRAW_AMOUNT)}</button>${sellHint}</div>`;
     $("#wd").onclick = withdraw;
   } else {
-    c.innerHTML = `<div class="withdraw"><p class="placeholder">Išnaudojote visus galimus monetų papildymus.</p>${sellHint || `<span class="hint">Norėdami baigti, paspauskite <em>Baigti žaidimą</em>.</span>`}</div>`;
+    c.innerHTML = `<div class="withdraw"><p class="placeholder">Išnaudojai visus galimus monetų papildymus.</p>${sellHint || `<span class="hint">Norėdamas(-a) baigti, paspausk <em>Baigti žaidimą</em>.</span>`}</div>`;
   }
 }
 
@@ -655,11 +655,11 @@ function centerOn(cell, offset=0){
 
 function renderReveal(it){
   const r = $("#reveal");
-  if(!it){ r.innerHTML = `<p class="placeholder">Atidarykite dėžę ir pamatysite, ką gavote.</p>`; return; }
+  if(!it){ r.innerHTML = `<p class="placeholder">Atidaryk dėžę ir pamatysi, ką gavai.</p>`; return; }
   const plain = S.cond==="plain";
   const c = colorOf(it);
-  const sub = sellMode() ? `Vertė: ${coins(it.value)} · pridėta į Jūsų inventorių`
-    : `Vertė: ${coins(it.value)} · pridėta prie Jūsų balanso`;
+  const sub = sellMode() ? `Vertė: ${coins(it.value)} · pridėta į tavo inventorių`
+    : `Vertė: ${coins(it.value)} · pridėta prie tavo balanso`;
   const exclusive = rarityShown();
   r.innerHTML = `<div class="reveal" style="--t:${c}">
     <div class="big">${avatarSVG(it)}</div>
@@ -675,7 +675,7 @@ function renderInventory(){
   const el = $("#invCard"); if(!el) return;
   const items = S.inventory.slice().sort((a,b)=>ITEMS[b.idx].value-ITEMS[a.idx].value);
   el.innerHTML = `
-    <div class="inv-head"><div class="stack" style="gap:4px"><span class="eyebrow">Jūsų inventorius</span>
+    <div class="inv-head"><div class="stack" style="gap:4px"><span class="eyebrow">Tavo inventorius</span>
       <h3>${S.inventory.length} ${plural(S.inventory.length, "avataras", "avatarai", "avatarų")} · vertė ${coins(invValue())}</h3></div></div>
     ${items.length ? `<div class="inv">${items.map(x => { const it=itemFor(x.idx); return `
       <div class="inv-item" style="--t:${colorOf(it)}">
@@ -683,7 +683,7 @@ function renderInventory(){
         ${S.cond==="plain" ? "" : `<span class="tier" style="font-size:.64rem">${it.tierObj.label} · ${pctText(it.p)}</span>`}
         <button class="btn-sell" data-uid="${x.uid}" ${S.spinning?"disabled":""}>Parduoti · <span class="num">${fmt(it.value)}</span></button>
       </div>`}).join("")}</div>`
-    : `<p class="placeholder">Čia atsiras gauti avatarai. Galite juos pasilikti arba parduoti už monetas.</p>`}`;
+    : `<p class="placeholder">Čia atsiras gauti avatarai. Gali juos pasilikti arba parduoti už monetas.</p>`}`;
   el.querySelectorAll("[data-uid]").forEach(b => b.onclick = () => sell(+b.dataset.uid));
 }
 
@@ -753,7 +753,7 @@ function askStop(){
   if(S.spinning) return;
   log("stop_clicked");
   const c = $("#controls");
-  c.innerHTML = `<div class="card confirm" style="width:100%"><p>Baigti žaidimą dabar? Grįžti į jį nebegalėsite.</p>
+  c.innerHTML = `<div class="card confirm" style="width:100%"><p>Baigti žaidimą dabar? Grįžti į jį nebegalėsi.</p>
     <div class="row"><button class="btn-go" id="yes">Taip, baigti</button><button class="btn-ghost" id="no">Žaisti toliau</button></div></div>`;
   $("#yes").onclick = () => endGame("stopped");
   $("#no").onclick = () => { log("stop_cancelled"); renderControls(); };
@@ -810,7 +810,7 @@ function screenDemographics(){
   app.innerHTML = `
     <form class="card" id="demo" novalidate>
       <div class="stack">
-        <span class="eyebrow">Apie Jus</span>
+        <span class="eyebrow">Apie tave</span>
         <h2>Demografiniai duomenys</h2>
       </div>
       <div class="q-list">
@@ -841,7 +841,7 @@ function screenDemographics(){
   };
   const check = d => [d.gender, d.age, d.education].flatMap((v,i) => v===null ? [i] : []);
   const message = (d, missing) => missing.length===1 && missing[0]===1 && $("#age").value.trim()
-    ? "Įveskite amžių skaičiais (18–100)." : `Atsakykite į visus klausimus (liko neatsakytų: ${missing.length}).`;
+    ? "Įvesk amžių skaičiais (18–100)." : `Atsakyk į visus klausimus (liko neatsakytų: ${missing.length}).`;
   form.oninput = form.onchange = () => {
     if(err.hidden) return;
     const d = read(), missing = check(d);
@@ -870,8 +870,8 @@ function screenPilot(){
     <form class="card" id="pilot" novalidate>
       <div class="stack">
         <span class="eyebrow">Bandomasis tyrimas</span>
-        <h2>Įvertinkite šį tyrimą</h2>
-        <p>Jūsų atsiliepimai padės patobulinti tyrimą. Pažymėkite nuo 1 (labai prastai) iki 5 (labai gerai). Komentarai neprivalomi.</p>
+        <h2>Įvertink šį tyrimą</h2>
+        <p>Tavo atsiliepimai padės patobulinti tyrimą. Pažymėk nuo 1 (labai prastai) iki 5 (labai gerai). Komentarai neprivalomi.</p>
       </div>
       <div class="q-list">
         ${PILOT.items.map((q,i) => `
@@ -891,7 +891,7 @@ function screenPilot(){
     if(e.target.type !== "radio") return;
     const f = e.target.closest(".q"); if(f) f.classList.remove("missing");
     const left = form.querySelectorAll(".q.missing").length;
-    err.hidden = !left; err.textContent = `Įvertinkite visus klausimus (liko neįvertintų: ${left}).`;
+    err.hidden = !left; err.textContent = `Įvertink visus klausimus (liko neįvertintų: ${left}).`;
   };
   form.onsubmit = e => {
     e.preventDefault();
@@ -900,7 +900,7 @@ function screenPilot(){
     form.querySelectorAll(".q").forEach((f,i) => f.classList.toggle("missing", missing.includes(i)));
     if(missing.length){
       err.hidden = false;
-      err.textContent = `Įvertinkite visus klausimus (liko neįvertintų: ${missing.length}).`;
+      err.textContent = `Įvertink visus klausimus (liko neįvertintų: ${missing.length}).`;
       $("#p"+(missing[0]+1)).scrollIntoView({behavior:"smooth", block:"center"});
       return;
     }
@@ -939,7 +939,7 @@ function screenQuestionnaire(){
   form.onchange = e => {
     const f = e.target.closest(".q"); if(f) f.classList.remove("missing");
     const left = form.querySelectorAll(".q.missing").length;
-    err.hidden = !left; err.textContent = `Atsakykite į visus klausimus (liko neatsakytų: ${left}).`;
+    err.hidden = !left; err.textContent = `Atsakyk į visus klausimus (liko neatsakytų: ${left}).`;
   };
   form.onsubmit = e => {
     e.preventDefault();
@@ -948,7 +948,7 @@ function screenQuestionnaire(){
     form.querySelectorAll(".q").forEach((f,i) => f.classList.toggle("missing", missing.includes(i)));
     if(missing.length){
       err.hidden = false;
-      err.textContent = `Atsakykite į visus klausimus (liko neatsakytų: ${missing.length}).`;
+      err.textContent = `Atsakyk į visus klausimus (liko neatsakytų: ${missing.length}).`;
       $("#q"+(missing[0]+1)).scrollIntoView({behavior:"smooth", block:"center"});
       return;
     }
@@ -969,19 +969,18 @@ async function finishStudy(){
   app.innerHTML = `
     <div class="card">
       <span class="eyebrow">Ačiū</span>
-      <h1>Ačiū, kad dalyvavote!</h1>
-      <p id="status">${DEMO ? "Demonstracinis režimas: niekas nebuvo išsiųsta." : "Išsaugomi Jūsų atsakymai. Neuždarykite šio puslapio…"}</p>
+      <h1>Ačiū, kad dalyvavai!</h1>
+      <p id="status">${DEMO ? "Demonstracinis režimas: niekas nebuvo išsiųsta." : "Išsaugomi tavo atsakymai. Neuždaryk šio puslapio…"}</p>
       <div class="stack" style="gap:4px"><span class="eyebrow">Užbaigimo kodas</span><span class="code">${S.code}</span></div>
       <div id="next"></div>
     </div>
     <div class="card">
       <span class="eyebrow">Apie šį tyrimą</span>
       <h2>Ką iš tikrųjų tyrė šis žaidimas</h2>
-      <p>Buvote priskirti vienai iš dviejų grupių. Abiejų grupių dalyviai laimėdavo tuos pačius kolekcionuojamus avatarus, tačiau tik viena grupė matė, kokie reti yra avatarai. Kiekvieno rezultato tikimybės abiejose grupėse buvo visiškai vienodos. Norime išsiaiškinti, ar informacija apie laimikio retumą turi įtakos tam, kiek ilgai žmonės žaidžia ir kaip dažnai pasiima papildomų monetų.</p>
-      ${rarityShown() ? `<p>Skaičiai „% žaidėjų gavo šį avatarą“ nebuvo tikrų žaidėjų skaičiai. Tai buvo iš anksto nustatytos kiekvieno rezultato tikimybės, kurias tyrėjas parinko, kad reti avatarai atrodytų išskirtiniai.</p>` : ""}
-      <p>Žaidimas buvo sukurtas taip, kad vidutiniškai kiekviena dėžė grąžintų mažiau, nei kainavo (apie 96 monetas už kiekvieną išleistą 100 monetų), kaip ir tikruose lošimuose. Ilgainiui žaidėjas visada pralošia. Niekas, ką laimėjote ar praradote, nebuvo tikra.</p>
+      <p>Buvai priskirtas(-a) vienai iš dviejų grupių. Abiejų grupių dalyviai laimėdavo tuos pačius kolekcionuojamus avatarus, tačiau tik viena grupė matė, kokie reti yra avatarai. Kiekvieno rezultato tikimybės abiejose grupėse buvo visiškai vienodos. Siekiu sužinoti daugiau, ar informacija apie avataro retumą turi įtakos tam, kiek ilgai žmonės žaidžia.</p>
+      ${rarityShown() ? `<p>Skaičiai „% žaidėjų gavo šį avatarą“ nebuvo tikrų žaidėjų skaičiai. Tai buvo iš anksto nustatytos kiekvieno rezultato tikimybės.</p>` : ""}
       <p>${esc(CONFIG.HELP_TEXT)} <a href="${esc(CONFIG.HELP_URL)}" target="_blank" rel="noopener">${esc(CONFIG.HELP_URL.replace(/^https?:\/\/|\/$/g, ""))}</a></p>
-      <p>Jei turite klausimų arba norite, kad Jūsų duomenys būtų pašalinti, rašykite <span class="num">${esc(CONFIG.CONTACT)}</span> ir nurodykite savo užbaigimo kodą.</p>
+      <p>Jei turi klausimų arba nori, kad tavo duomenys būtų pašalinti, rašyk <span class="num">${esc(CONFIG.CONTACT)}</span> ir nurodyk savo užbaigimo kodą.</p>
     </div>
     ${DEMO ? researcherPanel(sum, eventsCSV, summaryCSV) : ""}`;
 
@@ -996,7 +995,7 @@ async function finishStudy(){
       ok = true;
     }catch(e){ lastErr = e && e.message ? e.message : String(e); console.error("DataPipe save failed:", lastErr); await new Promise(r=>setTimeout(r, 1500)); }
   }
-  status.textContent = ok ? "Jūsų atsakymai išsaugoti. Galite uždaryti šį puslapį." : "Nepavyko išsaugoti Jūsų atsakymų. Nusiųskite aukščiau pateiktą užbaigimo kodą tyrėjui.";
+  status.textContent = ok ? "Tavo atsakymai išsaugoti. Gali uždaryti šį puslapį." : "Nepavyko išsaugoti tavo atsakymų. Nusiųsk aukščiau pateiktą užbaigimo kodą tyrėjui.";
   if(!ok) status.insertAdjacentHTML("afterend", `<p class="placeholder" style="font-size:.8rem">Klaidos informacija tyrėjui: <span class="num">${esc(lastErr || "nėra atsakymo (tinklas užblokuotas arba nėra ryšio)")}</span></p>`);
   if(ok && CONFIG.REDIRECT_URL){
     const u = CONFIG.REDIRECT_URL + (CONFIG.REDIRECT_URL.includes("?")?"&":"?") + `pid=${encodeURIComponent(S.pid)}&cond=${S.cond}&code=${S.code}`;
